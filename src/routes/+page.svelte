@@ -1,113 +1,67 @@
 <script lang="ts">
-  import { Viewer, utils } from "@photo-sphere-viewer/core";
-  import { AutorotatePlugin } from "@photo-sphere-viewer/autorotate-plugin";
-  import { GalleryPlugin } from "@photo-sphere-viewer/gallery-plugin";
   import { onMount } from "svelte";
+  /** @type {import('@marzipano').Load} */
+  //@ts-ignore
+  import Marzipano from "marzipano";
 
-  let viewerHTML: HTMLElement | null;
-  const baseUrl = "https://photo-sphere-viewer-data.netlify.app/assets/";
-
-  const animatedValues = {
-    pitch: { start: -Math.PI / 2, end: 0.2 },
-    yaw: { start: Math.PI, end: 0 },
-    zoom: { start: 0, end: 50 },
-    fisheye: { start: 2, end: 0 },
-  };
-
+  let viewerHTML : HTMLElement | null = null;
+  
   onMount(() => {
-    const viewer = new Viewer({
-      // container: viewerHTML,
-      container: "viewer",
-      panorama: baseUrl + "sphere.jpg",
-      defaultPitch: animatedValues.pitch.start,
-      defaultYaw: animatedValues.yaw.start,
-      defaultZoomLvl: animatedValues.zoom.start,
-      fisheye: animatedValues.fisheye.start,
-      // navbar: [
-      //   "autorotate",
-      //   "zoom",
-      //   {
-      //     title: "Rerun animation",
-      //     content: "🔄",
-      //     onClick: intro,
-      //   },
-      //   "caption",
-      //   "fullscreen",
-      // ],
-      plugins: [
-        [
-          AutorotatePlugin,
-          {
-            autostartDelay: null,
-            autostartOnIdle: false,
-            autorotatePitch: animatedValues.pitch.end,
-          },
-        ],
-        [
-          GalleryPlugin,
-          {
-            visibleOnLoad: true,
-          },
-        ],
-      ],
+    /// Create viewer.
+    var viewer = new Marzipano.Viewer(document.getElementById('pano'));
+
+    // Create source.
+    // var source = Marzipano.ImageUrlSource.fromString(
+    //   "tiles/example1/{f}.jpg"
+    // );
+
+    // var source = Marzipano.ImageUrlSource.fromString("tiles/{z}/{f}/{y}/{x}.jpg", {
+    //   cubeMapPreviewUrl: "tiles/preview.jpg"
+    // });
+
+    var urlPrefix = "//www.marzipano.net/media";
+    var source = Marzipano.ImageUrlSource.fromString(
+      urlPrefix + "/" + "oriente-station" + "/{z}/{f}/{y}/{x}.jpg",
+      { cubeMapPreviewUrl: urlPrefix + "/" + "oriente-station" + "/preview.jpg" });
+
+    // Create geometry.
+    var geometry = new Marzipano.CubeGeometry([ {
+          "tileSize": 256,
+          "size": 256,
+          "fallbackOnly": true
+        },
+        {
+          "tileSize": 512,
+          "size": 512
+        },
+        {
+          "tileSize": 512,
+          "size": 1024
+        },
+        {
+          "tileSize": 512,
+          "size": 2048
+        },
+        {
+          "tileSize": 512,
+          "size": 4096
+        }]);
+
+    // Create view.
+    var limiter = Marzipano.RectilinearView.limit.traditional(4096, 100*Math.PI/180);
+    var view = new Marzipano.RectilinearView(null, limiter);
+
+    // Create scene.
+    var scene = viewer.createScene({
+      source: source,
+      geometry: geometry,
+      view: view,
+      pinFirstLevel: true
     });
 
-    const autorotate = viewer.getPlugin(AutorotatePlugin) as any;
-
-    viewer.addEventListener("ready", intro, { once: true });
-
-    function intro() {
-      autorotate.stop();
-
-      new utils.Animation({
-        properties: animatedValues,
-        duration: 2500,
-        easing: "inOutQuad",
-        onTick: (properties) => {
-          viewer.setOption("fisheye", properties.fisheye);
-          viewer.rotate({ yaw: properties.yaw, pitch: properties.pitch });
-          viewer.zoom(properties.zoom);
-        },
-      }).then(() => {
-        autorotate.start();
-      });
-    }
-
-    const gallery = viewer.getPlugin(GalleryPlugin) as any;
-
-    gallery.setItems([
-      {
-        id: "sphere",
-        panorama: baseUrl + "sphere.jpg",
-        thumbnail: baseUrl + "sphere-small.jpg",
-        options: {
-          caption: "Parc national du Mercantour <b>&copy; Damien Sorel</b>",
-        },
-      },
-      {
-        id: "sphere-test",
-        panorama: baseUrl + "sphere-test.jpg",
-        name: "Test sphere",
-      },
-      {
-        id: "key-biscayne",
-        panorama: baseUrl + "tour/key-biscayne-1.jpg",
-        thumbnail: baseUrl + "tour/key-biscayne-1-thumb.jpg",
-        name: "Key Biscayne",
-        options: {
-          caption: "Cape Florida Light, Key Biscayne <b>&copy; Pixexid</b>",
-        },
-      },
-    ]);
+    // Display scene.
+    scene.switchTo();
   });
 </script>
 
-<svelte:head>
-  <link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/core/index.min.css"
-  />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/gallery-plugin@5/index.css">
-</svelte:head>
-
-<div id="viewer" bind:this={viewerHTML} class="w-full h-screen" />
+<div id="pano" bind:this={viewerHTML} class="w-full h-screen" />

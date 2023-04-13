@@ -24,6 +24,7 @@
 		"@photo-sphere-viewer/core": "^5.1.4",
 		"@photo-sphere-viewer/gallery-plugin": "^5.1.4",
 		"autoprefixer": "^10.4.14",
+		"marzipano": "^0.10.2",
 		"postcss": "^8.4.21",
 		"tailwindcss": "^3.3.1"
 	}

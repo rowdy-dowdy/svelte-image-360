@@ -8,5 +8,10 @@ declare global {
 		// interface Platform {}
 	}
 }
+declare module 'marzipano' {
+  
+};
+
+declare module 'marzipano';
 
 export {};
