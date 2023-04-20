@@ -12,6 +12,8 @@
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^2.0.0",
 		"@sveltejs/kit": "^1.5.0",
+		"@tailwindcss/forms": "^0.5.3",
+		"@types/adm-zip": "^0.5.0",
 		"svelte": "^3.54.0",
 		"svelte-check": "^3.0.1",
 		"tslib": "^2.4.1",
@@ -24,9 +26,15 @@
 		"@photo-sphere-viewer/core": "^5.1.4",
 		"@photo-sphere-viewer/gallery-plugin": "^5.1.4",
 		"@photo-sphere-viewer/markers-plugin": "^5.1.4",
+		"adm-zip": "^0.5.10",
 		"autoprefixer": "^10.4.14",
+		"highlight": "^0.2.4",
+		"jimp": "^0.22.7",
 		"marzipano": "^0.10.2",
+		"os": "^0.1.2",
+		"path": "^0.12.7",
 		"postcss": "^8.4.21",
+		"prismjs": "^1.29.0",
 		"tailwindcss": "^3.3.1"
 	}
 }

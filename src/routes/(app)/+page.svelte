@@ -1,11 +1,13 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import {
+    onMount
+  } from "svelte";
   /** @type {import('@marzipano').Load} */
   //@ts-ignore
   import Marzipano from "marzipano";
 
-  let viewerHTML : HTMLElement | null = null;
-  
+  let viewerHTML: HTMLElement | null = null;
+
   onMount(() => {
     /// Create viewer.
     var viewer = new Marzipano.Viewer(document.getElementById('pano'));
@@ -19,36 +21,38 @@
     //   cubeMapPreviewUrl: "tiles/preview.jpg"
     // });
 
-    var urlPrefix = "//www.marzipano.net/media";
+    var urlPrefix = "./house";
     var source = Marzipano.ImageUrlSource.fromString(
-      urlPrefix + "/" + "oriente-station" + "/{z}/{f}/{y}/{x}.jpg",
-      { cubeMapPreviewUrl: urlPrefix + "/" + "oriente-station" + "/preview.jpg" });
+      urlPrefix + "/{z}/{f}/{y}/{x}.png", {
+        cubeMapPreviewUrl: urlPrefix + "/preview.png"
+      });
 
     // Create geometry.
-    var geometry = new Marzipano.CubeGeometry([ {
-          "tileSize": 256,
-          "size": 256,
-          "fallbackOnly": true
-        },
-        {
-          "tileSize": 512,
-          "size": 512
-        },
-        {
-          "tileSize": 512,
-          "size": 1024
-        },
-        {
-          "tileSize": 512,
-          "size": 2048
-        },
-        {
-          "tileSize": 512,
-          "size": 4096
-        }]);
+    var geometry = new Marzipano.CubeGeometry([{
+      "tileSize": 625,
+      "size": 625,
+      "fall backOnly": true
+    },
+    {
+      "tileSize": 625,
+      "size": 625
+    },
+    {
+      "tileSize": 625,
+      "size": 1250
+    },
+    {
+      "tileSize": 625,
+      "size": 2500
+    },
+    {
+      "tileSize": 625,
+      "size": 5000
+    }
+    ]);
 
     // Create view.
-    var limiter = Marzipano.RectilinearView.limit.traditional(4096, 100*Math.PI/180);
+    var limiter = Marzipano.RectilinearView.limit.traditional(5000, 100 * Math.PI / 180);
     var view = new Marzipano.RectilinearView(null, limiter);
 
     // Create scene.
