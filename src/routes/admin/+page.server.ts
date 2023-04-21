@@ -31,7 +31,7 @@ export const actions = {
       }
 
       let uuid = crypto.randomUUID()
-      let maxZoom = +zooms[zooms.length - 1]
+      let maxZoom = zooms.length > 0 ? +zooms[zooms.length - 1] : 3
 
       for(let i = 0; i < zooms.length; i++) {
         await Promise.all([
@@ -41,9 +41,9 @@ export const actions = {
           slipImageFace(l, "l", name, +zooms[i],uuid, maxZoom),
           slipImageFace(r, "r", name, +zooms[i],uuid, maxZoom),
           slipImageFace(u, "u", name, +zooms[i],uuid, maxZoom),
-          mergeImagePreview(b,d,f,l,r,u,name,uuid, +zooms[i], maxZoom)
         ])
       }
+      await mergeImagePreview(b,d,f,l,r,u,name,uuid, maxZoom)
 
       // var zip = new AdmZip();
       // zip.addLocalFolder(`./storage/${uuid}/${name}`)
@@ -55,41 +55,24 @@ export const actions = {
       let tileSize = size / Math.pow(2,(maxZoom - 1))
 
       let jsText = `
-        var urlPrefix = "./${name}";
-        var source = Marzipano.ImageUrlSource.fromString(
-          urlPrefix + "/{z}/{f}/{y}/{x}.${type}", {
-            cubeMapPreviewUrl: urlPrefix + "/preview.${type}"
-          });
-
-        // Create geometry.
-        var geometry = new Marzipano.CubeGeometry([{
-          "tileSize": ${tileSize},
-          "size": ${tileSize},
-          "fall backOnly": true
+      {
+        "id": "${name}",
+        "name": "${name}",
+        "levels": [
+          { "tileSize": ${tileSize/2}, "size": ${tileSize/2}, "fall backOnly": true },
+          ${new Array(maxZoom).fill(0).map((v,i) => {
+            return `\n{ "tileSize": ${tileSize}, "size": ${tileSize * Math.pow(2,i)} }`
+          }).toString()}
+        ],
+        "faceSize": ${size*2},
+        "initialViewParameters": {
+          "pitch": 0,
+          "yaw": 0,
+          "fov": 1.5707963267948966
         },
-        ${new Array(maxZoom+1).map((v,i) => {
-          return `{
-            "tileSize": ${tileSize},
-            "size": ${tileSize * (i + 1)}
-          },\n`
-        }).toString()}
-        ]);
-
-        // Create view.
-        var limiter = Marzipano.RectilinearView.limit.traditional(${size*2}, 100 * Math.PI / 180);
-        var view = new Marzipano.RectilinearView(null, limiter);
-
-        // Create scene.
-        var scene = viewer.createScene({
-          source: source,
-          geometry: geometry,
-          view: view,
-          pinFirstLevel: true
-        });
-
-        // Display scene.
-        scene.switchTo();
-      `
+        "type": "${type}",
+        "linkHotspots": [],
+      }`
 
       return { success: true, jsText, zip: `${uuid}--${name}` }
     }
@@ -109,7 +92,7 @@ const slipImageFace = async (
   let h = image.bitmap.height;
 
   if (zoom < maxZoom) {
-    image.resize(w/Math.pow(2,maxZoom - zoom), h/Math.pow(2,maxZoom - zoom))
+    image.resize(+(w/Math.pow(2,maxZoom - zoom)), +(h/Math.pow(2,maxZoom - zoom)))
   }
 
   let type = file.name.split('.')[1]
@@ -117,6 +100,10 @@ const slipImageFace = async (
   let length = Math.pow(2,(zoom - 1)) 
 
   let distance = w / length
+
+  if (zoom < maxZoom) {
+    distance = +(w/Math.pow(2,maxZoom - zoom)) / length
+  }
 
   for(let i = 0; i < length; i++) {
     for(let j = 0; j < length; j++) {
@@ -135,7 +122,7 @@ const slipImageFace = async (
 
 const mergeImagePreview = async(
   b: File, d: File, f: File, l: File, r: File, u: File, 
-  name: string, uuid: string, zoom:number, maxZoom: number
+  name: string, uuid: string, maxZoom: number
 ) => {
   const imageB = await read(Buffer.from(await b.arrayBuffer()))
   const imageD = await read(Buffer.from(await d.arrayBuffer()))
@@ -145,23 +132,24 @@ const mergeImagePreview = async(
   const imageU = await read(Buffer.from(await u.arrayBuffer()))
 
   let distance = imageB.bitmap.width
-
-  imageB.resize(distance, distance*6)
-
   let type = b.name.split('.')[1]
 
-  imageB.blit(imageD, 0, distance)
-  imageB.blit(imageF, 0, distance * 2)
-  imageB.blit(imageL, 0, distance * 3)
-  imageB.blit(imageR, 0, distance * 4)
-  imageB.blit(imageU, 0, distance * 5)
+  let imagePreview = imageB.clone()
+  imagePreview.resize(distance, distance*6)
 
-  imageB.resize(distance/Math.pow(2,maxZoom - zoom + zoom), distance*6 / Math.pow(2,maxZoom - zoom + zoom))
+  imagePreview.blit(imageB,0,0)
+  imagePreview.blit(imageD, 0, distance)
+  imagePreview.blit(imageF, 0, distance * 2)
+  imagePreview.blit(imageL, 0, distance * 3)
+  imagePreview.blit(imageR, 0, distance * 4)
+  imagePreview.blit(imageU, 0, distance * 5)
+
+  imagePreview.resize(distance/Math.pow(2, maxZoom), distance*6 / Math.pow(2, maxZoom))
 
   if (saveInTemp) {
-    await imageB.writeAsync(tmpFile(`${uuid}/${name}/preview.${type}`))
+    await imagePreview.writeAsync(tmpFile(`${uuid}/${name}/preview.${type}`))
   }
   else {
-    await imageB.writeAsync(`./storage/${uuid}/${name}/preview.${type}`)
+    await imagePreview.writeAsync(`./storage/${uuid}/${name}/preview.${type}`)
   }
 }

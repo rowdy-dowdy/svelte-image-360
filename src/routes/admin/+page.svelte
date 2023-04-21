@@ -25,7 +25,7 @@
   let faces: FaceType[] = [
     {
       path: "b",
-      name: "Mặt sau (Back) (pz)",
+      name: "Mặt sau (Back) (nz)",
       preview: undefined,
       file: undefined
     },
@@ -37,19 +37,19 @@
     },
     {
       path: "f",
-      name: "Mặt trước (Front) (nz)",
+      name: "Mặt trước (Front) (pz)",
       preview: undefined,
       file: undefined
     },
     {
       path: "l",
-      name: "Mặt trái (left) (px)",
+      name: "Mặt trái (left) (nx)",
       preview: undefined,
       file: undefined
     },
     {
       path: "r",
-      name: "Mặt phải (Right) (nx)",
+      name: "Mặt phải (Right) (px)",
       preview: undefined,
       file: undefined
     },
@@ -93,53 +93,6 @@
     }
   }
 
-  let code = `
-    var urlPrefix = "./house";
-    var source = Marzipano.ImageUrlSource.fromString(
-      urlPrefix + "/{z}/{f}/{y}/{x}.png", {
-        cubeMapPreviewUrl: urlPrefix + "/preview.png"
-      });
-
-    // Create geometry.
-    var geometry = new Marzipano.CubeGeometry([{
-      "tileSize": 625,
-      "size": 625,
-      "fall backOnly": true
-    },
-    {
-      "tileSize": 625,
-      "size": 625
-    },
-    {
-      "tileSize": 625,
-      "size": 1250
-    },
-    {
-      "tileSize": 625,
-      "size": 2500
-    },
-    {
-      "tileSize": 625,
-      "size": 5000
-    }
-    ]);
-
-    // Create view.
-    var limiter = Marzipano.RectilinearView.limit.traditional(5000, 100 * Math.PI / 180);
-    var view = new Marzipano.RectilinearView(null, limiter);
-
-    // Create scene.
-    var scene = viewer.createScene({
-      source: source,
-      geometry: geometry,
-      view: view,
-      pinFirstLevel: true
-    });
-
-    // Display scene.
-    scene.switchTo();
-  `
-  let language = 'javascript'
   let showGuide = false
   let loading = false
   let error = ""
@@ -263,9 +216,9 @@
           <label class="" for="user_avatar">Create zoom image</label>
           <p class="mb-1 text-sm text-gray-500">Kích thước <b>2048</b> phù hợp <b>3x</b>, <b>4096</b> = <b>4x</b>, <b>8192</b> = <b>5x</b></p>
           <div class="flex items-center space-x-2">
-            {#each new Array(zoom - 2) as item,key}
-              <input type="checkbox" class="form-checkbox" name="zooms[]" checked value="{key+3}">
-              <p>zoom {key+3}x</p>
+            {#each new Array(zoom - 1) as item,key}
+              <input type="checkbox" class="form-checkbox" name="zooms[]" checked value="{key+2}">
+              <p>zoom {key+2}x</p>
             {/each}
           </div>
         </div>
