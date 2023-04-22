@@ -1,5 +1,6 @@
 import { fail } from '@sveltejs/kit';
-import { read } from "jimp";
+import pkg from 'jimp';
+const { read } = pkg;
 import * as fs from 'fs/promises';
 import { existsSync, mkdirSync } from "fs";
 import AdmZip from "adm-zip";
