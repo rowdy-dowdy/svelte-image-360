@@ -233,5 +233,18 @@
   }
 </script>
 
+<svelte:head>
+  <title>Sample Tour | Image 360</title>
+  <meta name="description" content="A sample 360° tour created by the VietHungIt.">
+  <meta name="viewport" content="target-densitydpi=device-dpi, width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, minimal-ui">
+  <style> @-ms-viewport { width: device-width; } </style>
+</svelte:head>
+
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <div id="pano" bind:this={viewerHTML} class="w-full h-screen" on:dblclick={getPitchYaw}/>
+
+<style>
+  :global(#pano > canvas ~ div) {
+    overflow: hidden !important;
+  }
+</style>
