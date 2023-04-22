@@ -216,9 +216,9 @@
           <label class="" for="user_avatar">Create zoom image</label>
           <p class="mb-1 text-sm text-gray-500">Kích thước <b>2048</b> phù hợp <b>3x</b>, <b>4096</b> = <b>4x</b>, <b>8192</b> = <b>5x</b></p>
           <div class="flex items-center space-x-2">
-            {#each new Array(zoom - 1) as item,key}
-              <input type="checkbox" class="form-checkbox" name="zooms[]" checked value="{key+2}">
-              <p>zoom {key+2}x</p>
+            {#each new Array(zoom) as item,key}
+              <input type="checkbox" class="form-checkbox" name="zooms[]" checked value="{key+1}">
+              <p>zoom {key+1}x</p>
             {/each}
           </div>
         </div>

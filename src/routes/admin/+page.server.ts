@@ -10,7 +10,7 @@ function tmpFile(p: string) {
   return path.join(tmpdir(),p);
 }
 
-let saveInTemp = false
+let saveInTemp = true
 
 export const actions = {
   split: async ({ cookies, request, url }) => {

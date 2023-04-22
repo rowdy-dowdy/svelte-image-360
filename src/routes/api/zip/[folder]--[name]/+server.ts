@@ -4,10 +4,20 @@ import { json } from '@sveltejs/kit';
 import * as fs from 'fs/promises';
 import { existsSync, mkdirSync, createReadStream } from "fs";
 import AdmZip from "adm-zip";
+import {tmpdir} from 'os';
+import path from 'path';
 
+function tmpFile(p: string) {
+  return path.join(tmpdir(),p);
+}
+
+let saveInTemp = true
 
 export const GET: RequestHandler = async ({ params, request, cookies }) => {
-  const filepath = './storage/' + params.folder + '/' + params.name
+  let filepath = './storage/' + params.folder + '/' + params.name
+  if (saveInTemp) {
+    filepath = tmpFile(params.folder + '/' + params.name)
+  }
 
   if (!existsSync(filepath)){
     throw error(404, 'Not found');
