@@ -89,6 +89,10 @@ const slipImageFace = async (
 ) => {
   const image = await read(Buffer.from(await file.arrayBuffer()))
 
+  if (["d", "u"].findIndex(v => v == faceName) >= 0) {
+    image.rotate(180)
+  }
+
   let w = image.bitmap.width;
   let h = image.bitmap.height;
 
@@ -139,11 +143,11 @@ const mergeImagePreview = async(
   imagePreview.resize(distance, distance*6)
 
   imagePreview.blit(imageB,0,0)
-  imagePreview.blit(imageD, 0, distance)
+  imagePreview.blit(imageD.rotate(180), 0, distance)
   imagePreview.blit(imageF, 0, distance * 2)
   imagePreview.blit(imageL, 0, distance * 3)
   imagePreview.blit(imageR, 0, distance * 4)
-  imagePreview.blit(imageU, 0, distance * 5)
+  imagePreview.blit(imageU.rotate(180), 0, distance * 5)
 
   imagePreview.resize(distance/Math.pow(2, maxZoom), distance*6 / Math.pow(2, maxZoom))
 

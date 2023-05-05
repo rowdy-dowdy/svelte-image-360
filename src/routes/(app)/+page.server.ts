@@ -108,6 +108,25 @@ export const load = async () => {
           }
         ],
       },
+      {
+        "id": "room2",
+        "name": "room2",
+        "levels": [
+          { "tileSize": 312.5, "size": 312.5, "fall backOnly": true },
+          { "tileSize": 625, "size": 625 },
+          { "tileSize": 625, "size": 1250 },
+          { "tileSize": 625, "size": 2500 }
+        ],
+        "faceSize": 5000,
+        "initialViewParameters": {
+          "pitch": 0,
+          "yaw": 0,
+          "fov": 1.5707963267948966
+        },
+        "type": "jpg",
+        "linkHotspots": [],
+      }
+           
     ],
     "name": "Sample Tour",
     "settings": {

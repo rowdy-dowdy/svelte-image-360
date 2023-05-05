@@ -25,7 +25,7 @@
   let faces: FaceType[] = [
     {
       path: "b",
-      name: "Mặt sau (Back) (nz)",
+      name: "Mặt sau (Back) (pz)",
       preview: undefined,
       file: undefined
     },
@@ -37,19 +37,19 @@
     },
     {
       path: "f",
-      name: "Mặt trước (Front) (pz)",
+      name: "Mặt trước (Front) (nz)",
       preview: undefined,
       file: undefined
     },
     {
       path: "l",
-      name: "Mặt trái (left) (nx)",
+      name: "Mặt trái (left) (px)",
       preview: undefined,
       file: undefined
     },
     {
       path: "r",
-      name: "Mặt phải (Right) (px)",
+      name: "Mặt phải (Right) (nx)",
       preview: undefined,
       file: undefined
     },
