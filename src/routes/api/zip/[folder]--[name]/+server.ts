@@ -6,12 +6,13 @@ import { existsSync, mkdirSync, createReadStream } from "fs";
 import AdmZip from "adm-zip";
 import {tmpdir} from 'os';
 import path from 'path';
+import { SAVE_TEMP } from '$env/static/private';
 
 function tmpFile(p: string) {
   return path.join(tmpdir(),p);
 }
 
-let saveInTemp = false
+let saveInTemp = SAVE_TEMP
 
 export const GET: RequestHandler = async ({ params, request, cookies }) => {
   let filepath = './storage/' + params.folder + '/' + params.name

@@ -1,17 +1,26 @@
 import { fail } from '@sveltejs/kit';
-import pkg from 'jimp';
-const { read } = pkg;
+// import pkg from 'jimp';
+// const { read } = pkg;
 import * as fs from 'fs/promises';
 import { existsSync, mkdirSync } from "fs";
+import sharp from "sharp";
 import AdmZip from "adm-zip";
 import {tmpdir} from 'os';
 import path from 'path';
+import { SAVE_TEMP } from '$env/static/private';
 
 function tmpFile(p: string) {
   return path.join(tmpdir(),p);
 }
 
-let saveInTemp = false
+let saveInTemp = SAVE_TEMP
+
+const compress = {
+  'png': {compressionLevel: 8, quality: 60},
+  'jpeg': { quality: 60 },
+  'webp': { quality: 60 },
+  'gif': { }
+}
 
 export const actions = {
   split: async ({ cookies, request, url }) => {
@@ -50,9 +59,8 @@ export const actions = {
       // zip.addLocalFolder(`./storage/${uuid}/${name}`)
       // await zip.writeZipPromise(`./storage/${uuid}/${name}.zip`);
 
-      let type = b.name.split('.')[1]
-      let image = await read(Buffer.from(await b.arrayBuffer()))
-      let size = image.bitmap.width
+      let metadata = await sharp(await b.arrayBuffer()).metadata()
+      let { size = 0, format } = metadata
       let tileSize = size / Math.pow(2,(maxZoom - 1))
 
       let jsText = `
@@ -71,7 +79,7 @@ export const actions = {
           "yaw": 0,
           "fov": 1.5707963267948966
         },
-        "type": "${type}",
+        "type": "${format}",
         "linkHotspots": [],
       }`
 
@@ -87,39 +95,47 @@ const slipImageFace = async (
   file: File, faceName: string, name: string, zoom: number, uuid: string,
   maxZoom: number
 ) => {
-  const image = await read(Buffer.from(await file.arrayBuffer()))
+  const image = sharp(await file.arrayBuffer())
 
   if (["d", "u"].findIndex(v => v == faceName) >= 0) {
     image.rotate(180)
   }
 
-  let w = image.bitmap.width;
-  let h = image.bitmap.height;
+  let metadata = await image.metadata()
+  let { width = 0, height = 0, format } = metadata
 
   if (zoom < maxZoom) {
-    image.resize(+(w/Math.pow(2,maxZoom - zoom)), +(h/Math.pow(2,maxZoom - zoom)))
+    image.resize(+(width/Math.pow(2,maxZoom - zoom)), +(height/Math.pow(2,maxZoom - zoom)))
   }
-
-  let type = file.name.split('.')[1]
 
   let length = Math.pow(2,(zoom - 1)) 
 
-  let distance = w / length
+  let distance = width / length
 
   if (zoom < maxZoom) {
-    distance = +(w/Math.pow(2,maxZoom - zoom)) / length
+    distance = +(width/Math.pow(2,maxZoom - zoom)) / length
   }
 
   for(let i = 0; i < length; i++) {
     for(let j = 0; j < length; j++) {
       let temp = image.clone()
       if (saveInTemp) {
-        await temp.crop(j * distance, i * distance, distance, distance)
-        .writeAsync(tmpFile(`${uuid}/${name}/${zoom}/${faceName}/${i}/${j}.${type}`))
+        await temp.extract({left: j * distance, top: i * distance, width: distance, height: distance})
+          .jpeg({ quality: 60, force: true })
+          .toFile(tmpFile(`${uuid}/${name}/${zoom}/${faceName}/${i}/${j}.${format}`))
+          .then((data: any) => {
+            console.log(data)
+            return data
+          })
       }
       else {
-        await temp.crop(j * distance, i * distance, distance, distance)
-          .writeAsync(`./storage/${uuid}/${name}/${zoom}/${faceName}/${i}/${j}.${type}`)
+        await temp.extract({left: j * distance, top: i * distance, width: distance, height: distance })
+          .jpeg({ quality: 60, force: true })
+          .toFile(`./storage/${uuid}/${name}/${zoom}/${faceName}/${i}/${j}.${format}`)
+          .then((data: any) => {
+            console.log(data)
+            return data
+          })
       }
     }
   }
@@ -129,32 +145,44 @@ const mergeImagePreview = async(
   b: File, d: File, f: File, l: File, r: File, u: File, 
   name: string, uuid: string, maxZoom: number
 ) => {
-  const imageB = await read(Buffer.from(await b.arrayBuffer()))
-  const imageD = await read(Buffer.from(await d.arrayBuffer()))
-  const imageF = await read(Buffer.from(await f.arrayBuffer()))
-  const imageL = await read(Buffer.from(await l.arrayBuffer()))
-  const imageR = await read(Buffer.from(await r.arrayBuffer()))
-  const imageU = await read(Buffer.from(await u.arrayBuffer()))
+  const imageB = await sharp(await b.arrayBuffer())
+  const imageD = await sharp(await d.arrayBuffer())
+  const imageF = await sharp(await f.arrayBuffer())
+  const imageL = await sharp(await l.arrayBuffer())
+  const imageR = await sharp(await r.arrayBuffer())
+  const imageU = await sharp(await u.arrayBuffer())
 
-  let distance = imageB.bitmap.width
-  let type = b.name.split('.')[1]
+  let metadata = await imageB.metadata()
+
+  let { width = 0, format } = metadata
 
   let imagePreview = imageB.clone()
-  imagePreview.resize(distance, distance*6)
+  // imagePreview.resize(width, width*6)
 
-  imagePreview.blit(imageB,0,0)
-  imagePreview.blit(imageD.rotate(180), 0, distance)
-  imagePreview.blit(imageF, 0, distance * 2)
-  imagePreview.blit(imageL, 0, distance * 3)
-  imagePreview.blit(imageR, 0, distance * 4)
-  imagePreview.blit(imageU.rotate(180), 0, distance * 5)
+  imagePreview.composite([
+    // { input: await imageB.toBuffer(), left: 0, top: 0 },
+    { input: await imageD.rotate(180).toBuffer(), left: 0, top: width },
+    { input: await imageF.toBuffer(), left: 0, top: width * 2 },
+    { input: await imageL.toBuffer(), left: 0, top: width * 3 },
+    { input: await imageR.toBuffer(), left: 0, top: width * 4 },
+    { input: await imageU.rotate(180).toBuffer(), left: 0, top: width * 5 },
 
-  imagePreview.resize(distance/Math.pow(2, maxZoom), distance*6 / Math.pow(2, maxZoom))
+  ])
+
+  imagePreview.resize(width/Math.pow(2, maxZoom), width*6 / Math.pow(2, maxZoom))
 
   if (saveInTemp) {
-    await imagePreview.writeAsync(tmpFile(`${uuid}/${name}/preview.${type}`))
+    await imagePreview.jpeg({ quality: 60, force: true }).toFile(tmpFile(`${uuid}/${name}/preview.${format}`))
+      .then((data: any) => {
+        console.log(data)
+        return data
+      })
   }
   else {
-    await imagePreview.writeAsync(`./storage/${uuid}/${name}/preview.${type}`)
+    await imagePreview.jpeg({ quality: 60, force: true }).toFile(`./storage/${uuid}/${name}/preview.${format}`)
+      .then((data: any) => {
+        console.log(data)
+        return data
+      })
   }
 }
