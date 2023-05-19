@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import Container from "../../lib/admin/components/container.svelte";
+  import Container from "../../lib/admin/components/Container.svelte";
   import { formatBytes } from "../../lib/admin/utils/hepler";
   //@ts-ignore
   import Prism from 'prismjs';
