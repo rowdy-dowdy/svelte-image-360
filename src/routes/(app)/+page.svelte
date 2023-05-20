@@ -3,13 +3,24 @@
   import Marzipano from "marzipano";
   import LinkHotspot from "$lib/web/LinkHotspot.svelte";
   import InfoHotSpot from "$lib/web/InfoHotSpot.svelte";
+  import type { InfoHostSpotType, LinkHostSpotType, SceneDataType } from "./+page.server.js";
+  import InfoHotSpot2 from "$lib/web/InfoHotSpot2.svelte";
+  import InfoHotSpotVideo from "$lib/web/InfoHotSpotVideo.svelte";
+  import Anim from "$lib/web/Anim.svelte";
 
   export let data
 
   let viewerHTML: HTMLElement | null = null;
-  let viewer: any = null;
-  let scenes: any[] = []
-  let autorotate: any = null
+  let viewer: Marzipano.Viewer | null = null;
+  let scenes: {
+    data: SceneDataType,
+    scene: Marzipano.Scene,
+    view: Marzipano.RectilinearView
+  }[] = []
+  let autoRotate: Function | null = null
+  let currentScene = data.scenes[0]
+  let fullScreen = false
+  let autoRotateCheck = true
 
   var viewerOpts = {
     controls: {
@@ -18,20 +29,26 @@
   };
 
   function startAutorotate() {
-    viewer.startMovement(autorotate);
-    viewer.setIdleMovement(3000, autorotate);
+    if (!viewer || !autoRotate) return
+
+    viewer.startMovement(autoRotate);
+    viewer.setIdleMovement(3000, autoRotate);
   }
 
   function stopAutorotate() {
+    if (!viewer) return
     viewer.stopMovement();
     viewer.setIdleMovement(Infinity);
   }
 
-  function createLinkHotspotElement(hotspot: any) {
+  function createLinkHotspotElement(hotspot: LinkHostSpotType) {
     var wrapper = document.createElement('div')
 		let toolbarComponent = new LinkHotspot({
 			target: wrapper,
-			props: {}
+			props: {
+        title: findSceneDataById(hotspot.target)?.name || "",
+        direction: hotspot.direction
+      }
 		});
 
 		// toolbarComponent.$on('click-eye', ({ detail }) => eye = detail);
@@ -44,31 +61,46 @@
     wrapper.addEventListener('click', function() {
       switchScene(findSceneById(hotspot.target));
     });
-
-    // Prevent touch and scroll events from reaching the parent element.
-    // This prevents the view control logic from interfering with the hotspot.
+    
     stopTouchAndScrollEventPropagation(wrapper);
 
     return wrapper;
   }
 
-  function createInfoHotspotElement(hotspot: any) {
-    // Create wrapper element to hold icon and tooltip.
+  function createInfoHotspotElement(hotspot: InfoHostSpotType) {
     var wrapper = document.createElement('div')
 
-		let toolbarComponent = new InfoHotSpot({
-			target: wrapper,
-			props: {}
-		})
+    if (hotspot.type == "2") {
+      let toolbarComponent = new InfoHotSpot2({
+        target: wrapper,
+        props: {
+          title: hotspot.title,
+          description: hotspot.description
+        }
+      })
+    }
+    else if (hotspot.type == "video") {
+      let toolbarComponent = new InfoHotSpotVideo({
+        target: wrapper,
+        props: {}
+      })
+    }
+    else {
+      let toolbarComponent = new InfoHotSpot({
+        target: wrapper,
+        props: {
+          title: hotspot.title,
+          description: hotspot.description
+        }
+      })
+    }
 
-    // Prevent touch and scroll events from reaching the parent element.
-    // This prevents the view control logic from interfering with the hotspot.
+
     stopTouchAndScrollEventPropagation(wrapper)
 
     return wrapper
   }
 
-  // Prevent touch and scroll events from reaching the parent element.
   function stopTouchAndScrollEventPropagation(element: HTMLElement) {
     var eventList = [
       'touchstart', 'touchmove', 'touchend', 'touchcancel',
@@ -105,74 +137,98 @@
     scene.view.setParameters(scene.data.initialViewParameters);
     scene.scene.switchTo();
     startAutorotate();
+    currentScene = scene.data
     // updateSceneName(scene);
     // updateSceneList(scene);
+  }
+
+  function toggleAutorotate() {
+    if (autoRotateCheck) {
+      stopAutorotate()
+      autoRotateCheck = false
+    } else {
+      startAutorotate()
+      autoRotateCheck = true
+    }
+  }
+
+  const toggleFullScreen = () => {
+    if (!fullScreen) {
+      document.documentElement.requestFullscreen()
+      fullScreen = true
+    }
+    else {
+      document.exitFullscreen();
+      fullScreen = false
+    }
   }
 
   onMount(() => {
     if (!viewerHTML) return
     /// Create viewer.
-    viewer = new Marzipano.Viewer(viewerHTML, viewerOpts);
+    viewer = new Marzipano.Viewer(viewerHTML, viewerOpts)
 
     // Create scenes.
     scenes = data.scenes.map(function(data) {
-      var urlPrefix = "./tiles";
+      var urlPrefix = "./tiles"
       var source = Marzipano.ImageUrlSource.fromString(
         urlPrefix + "/" + data.id + "/{z}/{f}/{y}/{x}.jpg",
-        { cubeMapPreviewUrl: urlPrefix + "/" + data.id + "/preview.jpg" });
-      var geometry = new Marzipano.CubeGeometry(data.levels);
+        { cubeMapPreviewUrl: urlPrefix + "/" + data.id + "/preview.jpg" })
+      var geometry = new Marzipano.CubeGeometry(data.levels)
 
-      var limiter = Marzipano.RectilinearView.limit.traditional(data.faceSize, 100*Math.PI/180, 120*Math.PI/180);
-      var view = new Marzipano.RectilinearView(data.initialViewParameters, limiter);
+      var limiter = Marzipano.RectilinearView.limit.traditional(data.faceSize, 100*Math.PI/180, 120*Math.PI/180)
+      var view = new Marzipano.RectilinearView(data.initialViewParameters, limiter)
 
-      var scene = viewer.createScene({
+      var scene = viewer!.createScene({
         source: source,
         geometry: geometry,
         view: view,
         pinFirstLevel: true
-      });
+      })
 
       // Create link hotspots.
       data.linkHotspots.forEach(function(hotspot) {
-        var element = createLinkHotspotElement(hotspot);
-        scene.hotspotContainer().createHotspot(element, { yaw: hotspot.yaw, pitch: hotspot.pitch });
-      });
+        var element = createLinkHotspotElement(hotspot)
+        scene.hotspotContainer().createHotspot(element, { yaw: hotspot.yaw, pitch: hotspot.pitch })
+      })
 
       // Create info hotspots.
       data.infoHotspots.forEach(function(hotspot) {
-        var element = createInfoHotspotElement(hotspot);
-        scene.hotspotContainer().createHotspot(element, { yaw: hotspot.yaw, pitch: hotspot.pitch });
-      });
+        var element = createInfoHotspotElement(hotspot)
+        scene.hotspotContainer().createHotspot(element, { yaw: hotspot.yaw, pitch: hotspot.pitch })
+      })
 
       return {
         data: data,
         scene: scene,
         view: view
-      };
-    });
+      }
+    })
 
     // Set up autorotate, if enabled.
-    autorotate = Marzipano.autorotate({
+    autoRotate = Marzipano.autorotate({
       yawSpeed: 0.03,
       targetPitch: 0,
       targetFov: Math.PI/2
-    });
+    })
 
     scenes.forEach(function(scene) {
-      var el = document.querySelector('#sceneList .scene[data-id="' + scene.data.id + '"]');
+      var el = document.querySelector('#sceneList .scene[data-id="' + scene.data.id + '"]')
       if (!el) return
 
       el.addEventListener('click', function() {
         switchScene(scene)
-      });
-    });
+      })
+    })
 
     // Display the initial scene.
     switchScene(scenes[0])
   });
 
   const getPitchYaw = (e: MouseEvent) => {
-    var view = viewer.view();
+    if (!viewer) return
+
+    var view = viewer.view() as any
     console.log(view.screenToCoordinates({x : e.x, y: e.y}))
   }
 </script>
@@ -184,8 +240,37 @@
   <style> @-ms-viewport { width: device-width; } </style>
 </svelte:head>
 
-<!-- svelte-ignore a11y-click-events-have-key-events -->
 <div id="pano" bind:this={viewerHTML} class="w-full h-screen" on:dblclick={getPitchYaw}/>
+<div class="fixed bottom-0 left-0 right-0 bg-black/60 text-white">
+  <div class="text-center p-2">{currentScene.name}</div>
+
+  <div class="absolute right-0 top-0 flex-none flex divide-x divide-transparent">
+    {#if autoRotateCheck}
+      <span class="icon w-10 h-10 p-2 bg-black cursor-pointer" on:click={toggleAutorotate}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z"></path><path d="M9 9h6v6H9z"></path></svg>
+      </span>
+    {:else}
+      <span class="icon w-10 h-10 p-2 bg-black cursor-pointer" on:click={toggleAutorotate}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z"></path><path d="m9 17 8-5-8-5z"></path></svg>
+      </span>
+    {/if}
+
+    {#if !fullScreen}
+      <span class="icon w-10 h-10 p-2 bg-black cursor-pointer" on:click={toggleFullScreen}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M5 5h5V3H3v7h2zm5 14H5v-5H3v7h7zm11-5h-2v5h-5v2h7zm-2-4h2V3h-7v2h5z"></path></svg>
+      </span>
+    {:else}
+      <span class="icon w-10 h-10 p-2 bg-black cursor-pointer" on:click={toggleFullScreen}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M10 4H8v4H4v2h6zM8 20h2v-6H4v2h4zm12-6h-6v6h2v-4h4zm0-6h-4V4h-2v6h6z"></path></svg>
+      </span>
+    {/if}
+  </div>
+</div>
+
+
+<div class="fixed w-full h-screen top-0 left-0 pointer-events-none">
+  <Anim />
+</div>
 
 <style>
   :global(#pano > canvas ~ div) {

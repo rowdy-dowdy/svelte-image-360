@@ -79,7 +79,6 @@ export const actions = {
           "yaw": 0,
           "fov": 1.5707963267948966
         },
-        "type": "${format}",
         "linkHotspots": [],
       }`
 
