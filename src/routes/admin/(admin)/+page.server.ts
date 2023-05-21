@@ -1,16 +1,14 @@
-import { fail } from '@sveltejs/kit';
-// import pkg from 'jimp';
-// const { read } = pkg;
-import * as fs from 'fs/promises';
-import { existsSync, mkdirSync } from "fs";
-import sharp from "sharp";
-import AdmZip from "adm-zip";
-import {tmpdir} from 'os';
-import path from 'path';
-import { SAVE_TEMP } from '$env/static/private';
+import { fail } from '@sveltejs/kit'
+import * as fs from 'fs/promises'
+import { existsSync, mkdirSync } from "fs"
+import sharp from "sharp"
+import AdmZip from "adm-zip"
+import {tmpdir} from 'os'
+import path from 'path'
+import { SAVE_TEMP } from '$env/static/private'
 
 function tmpFile(p: string) {
-  return path.join(tmpdir(),p);
+  return path.join(tmpdir(),p)
 }
 
 let saveInTemp = SAVE_TEMP
@@ -37,7 +35,7 @@ export const actions = {
           u = data.get('u') as File
       
       if (!saveInTemp && !existsSync('./storage')) {
-        mkdirSync('./storage', { recursive: true });
+        mkdirSync('./storage', { recursive: true })
       }
 
       let uuid = crypto.randomUUID()
@@ -54,10 +52,6 @@ export const actions = {
         ])
       }
       await mergeImagePreview(b,d,f,l,r,u,name,uuid, maxZoom)
-
-      // var zip = new AdmZip();
-      // zip.addLocalFolder(`./storage/${uuid}/${name}`)
-      // await zip.writeZipPromise(`./storage/${uuid}/${name}.zip`);
 
       let metadata = await sharp(await b.arrayBuffer()).metadata()
       let { size = 0, format } = metadata
@@ -79,7 +73,6 @@ export const actions = {
           "yaw": 0,
           "fov": 1.5707963267948966
         },
-        "type": "${format}",
         "linkHotspots": [],
       }`
 

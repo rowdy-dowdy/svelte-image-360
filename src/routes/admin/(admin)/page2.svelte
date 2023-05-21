@@ -1,13 +1,13 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import Container from "../../lib/admin/components/Container.svelte";
-  import { formatBytes } from "../../lib/admin/utils/hepler";
   //@ts-ignore
   import Prism from 'prismjs';
   import { applyAction, enhance } from "$app/forms";
   import { clickOutside } from "$lib/utils/clickOutSide";
+  import { formatBytes } from "$lib/utils/hepler.js";
+  import Container from "$lib/admin/Container.svelte";
 
-  export let form;
+  export let form: any;
 
   let range = 3
 
