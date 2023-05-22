@@ -1,16 +1,15 @@
-import { fail } from '@sveltejs/kit';
-// import pkg from 'jimp';
-// const { read } = pkg;
-import * as fs from 'fs/promises';
-import { existsSync, mkdirSync } from "fs";
-import sharp from "sharp";
-import AdmZip from "adm-zip";
-import {tmpdir} from 'os';
-import path from 'path';
-import { SAVE_TEMP } from '$env/static/private';
+import { fail } from '@sveltejs/kit'
+import * as fs from 'fs/promises'
+import { existsSync, mkdirSync } from "fs"
+import sharp from "sharp"
+import AdmZip from "adm-zip"
+import {tmpdir} from 'os'
+import path from 'path'
+import { SAVE_TEMP } from '$env/static/private'
+import { renderFace } from '$lib/admin/convert.js'
 
 function tmpFile(p: string) {
-  return path.join(tmpdir(),p);
+  return path.join(tmpdir(),p)
 }
 
 let saveInTemp = SAVE_TEMP
@@ -22,8 +21,37 @@ const compress = {
   'gif': { }
 }
 
+const facePositions = {
+  pz: {x: 1, y: 1},
+  nz: {x: 3, y: 1},
+  px: {x: 2, y: 1},
+  nx: {x: 0, y: 1},
+  py: {x: 1, y: 0},
+  ny: {x: 1, y: 2}
+}
+
 export const actions = {
   split: async ({ cookies, request, url }) => {
+    try {
+      const data = await request.formData()
+      
+      let title = data.get('title') as string,
+          image = data.get('image') as File
+      
+      if (!saveInTemp && !existsSync('./storage')) {
+        mkdirSync('./storage', { recursive: true })
+      }
+
+      let uuid = crypto.randomUUID()
+
+      return { success: true, uuid }
+    }
+    catch (e) {
+      return fail(400, { error: `Đã có lỗi xảy ra vui lòng thử lại sau` })
+    }
+  },
+
+  split2: async ({ cookies, request, url }) => {
     try {
       const data = await request.formData()
       
@@ -37,7 +65,7 @@ export const actions = {
           u = data.get('u') as File
       
       if (!saveInTemp && !existsSync('./storage')) {
-        mkdirSync('./storage', { recursive: true });
+        mkdirSync('./storage', { recursive: true })
       }
 
       let uuid = crypto.randomUUID()
@@ -54,10 +82,6 @@ export const actions = {
         ])
       }
       await mergeImagePreview(b,d,f,l,r,u,name,uuid, maxZoom)
-
-      // var zip = new AdmZip();
-      // zip.addLocalFolder(`./storage/${uuid}/${name}`)
-      // await zip.writeZipPromise(`./storage/${uuid}/${name}.zip`);
 
       let metadata = await sharp(await b.arrayBuffer()).metadata()
       let { size = 0, format } = metadata

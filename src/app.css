@@ -17,11 +17,11 @@
 }
 
 @layer components {
-  span.icon {
+  *.icon {
     @apply block;
   }
 
-  span.icon svg {
+  *.icon svg {
     @apply !w-full !h-full !fill-current;
   }
 }

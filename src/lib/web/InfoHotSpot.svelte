@@ -1,15 +1,21 @@
 <script lang="ts">
+  import { hold } from "../../stores/pano";
+
   // export let position: "l" | "r" | "t" | "b" = "r"
   export let title: string
   export let description: string
 
   let show = false
+  let hover = false
 </script>
 
-<div class="absolute top-0 left-0 -translate-x-1/2 w-12 h-12 -translate-y-1/2 group">
-  <div class="relative w-max group">
+<div class="absolute top-0 left-0 -translate-x-1/2 w-12 h-12 -translate-y-1/2 group {$hold ? '!pointer-events-none' : ''}">
+  <div class="relative w-max"
+    on:mouseover={() => hover = true}
+    on:mouseleave={() => hover = false}
+  >
     <div
-      class="info-title { show ? 'show' : ''}"
+      class="info-title { show ? 'show' : ''} { hover ? 'hover' : ''}"
       on:click={() => show = !show}
     >
       <img src="./img/info.png" alt="" class="w-8 h-8 object-contain">
@@ -28,9 +34,14 @@
 
 <style lang="postcss">
   .info-title {
-    transition: all .3s, border-radius .3s;
+    transition: all .3s ease-in-out .3s, border-radius .3s ease-in-out .3s;
     @apply flex items-center space-x-4 w-12 h-12 bg-stone-900/80 rounded-[50%] 
-      cursor-pointer group-hover:w-64 group-hover:rounded overflow-hidden px-2;
+      cursor-pointer overflow-hidden px-2;
+  }
+
+  .info-title.hover {
+    transition: all .3s, border-radius .3s;
+    @apply w-64 rounded;
   }
 
   .info-title.show {

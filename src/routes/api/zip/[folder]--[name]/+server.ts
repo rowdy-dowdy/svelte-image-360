@@ -1,15 +1,15 @@
-import { error } from '@sveltejs/kit';
-import type { RequestHandler } from "./$types";
-import { json } from '@sveltejs/kit';
-import * as fs from 'fs/promises';
-import { existsSync, mkdirSync, createReadStream } from "fs";
-import AdmZip from "adm-zip";
-import {tmpdir} from 'os';
-import path from 'path';
-import { SAVE_TEMP } from '$env/static/private';
+import { error } from '@sveltejs/kit'
+import type { RequestHandler } from "./$types"
+import { json } from '@sveltejs/kit'
+import * as fs from 'fs/promises'
+import { existsSync, mkdirSync, createReadStream } from "fs"
+import AdmZip from "adm-zip"
+import {tmpdir} from 'os'
+import path from 'path'
+import { SAVE_TEMP } from '$env/static/private'
 
 function tmpFile(p: string) {
-  return path.join(tmpdir(),p);
+  return path.join(tmpdir(),p)
 }
 
 let saveInTemp = SAVE_TEMP
@@ -21,10 +21,10 @@ export const GET: RequestHandler = async ({ params, request, cookies }) => {
   }
 
   if (!existsSync(filepath)){
-    throw error(404, 'Not found');
+    throw error(404, 'Not found')
   }
 
-  var zip = new AdmZip();
+  var zip = new AdmZip()
   zip.addLocalFolder(filepath)
 
   const file_stream = zip.toBuffer()

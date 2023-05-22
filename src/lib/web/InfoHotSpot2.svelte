@@ -1,11 +1,12 @@
 <script lang="ts">
+  import { hold } from "../../stores/pano";
   // export let position: "l" | "r" | "t" | "b" = "r"
   export let title: string
   export let description: string
   let show = false
 </script>
 
-<div class="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 group">
+<div class="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 group {$hold ? '!pointer-events-none' : ''}">
   <div class="info-title {show ? 'show' : ''}" on:click={() => show = !show}>
     <div class="flex-none w-12 h-12 grid place-items-center">
       <img src="./img/info.png" alt="" class="w-8 h-8 object-contain">

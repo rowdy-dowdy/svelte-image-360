@@ -6,7 +6,7 @@
   import { onDestroy, onMount } from "svelte";
 
   let viewerHTML: HTMLElement | null;
-  const baseUrl = "https://photo-sphere-viewer-data.netlify.app/assets/";
+  const baseUrl = './tiles2/' || "https://photo-sphere-viewer-data.netlify.app/assets/";
 
   const animatedValues = {
     pitch: { start: -Math.PI / 2, end: 0.2 },
@@ -22,7 +22,7 @@
   onMount(() => {
     viewer = new Viewer({
       container: "viewer",
-      panorama: baseUrl + "sphere.jpg",
+      panorama: baseUrl + "1.jpg",
       loadingImg: undefined,
       // loadingImg: baseUrl + "loader.gif",
       touchmoveTwoFingers: true,
@@ -197,25 +197,10 @@
 
   const changeScreen = (i: number) => {
     if (viewer) {
-      autorotate?.stop()
-      viewer?.setPanorama(baseUrl + (i == 1 ? "sphere.jpg" : "tour/key-biscayne-1.jpg"))
+      viewer?.setPanorama(baseUrl + (i == 1 ? "1.jpg" : "2.jpg"))
         .then(() => {
           console.log('b')
         })
-
-      new utils.Animation({
-        properties: {
-          zoom: {start: (viewer as Viewer).getZoomLevel(), end: 100}
-        },
-        duration: 1000,
-        easing: '500',
-        onTick: (properties) => {
-          viewer?.zoom(properties.zoom);
-        }
-      }).then(() => {
-        autorotate?.start();
-        console.log('a')
-      })
     }
   };
 

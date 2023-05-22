@@ -7,6 +7,7 @@
   import InfoHotSpot2 from "$lib/web/InfoHotSpot2.svelte";
   import InfoHotSpotVideo from "$lib/web/InfoHotSpotVideo.svelte";
   import Anim from "$lib/web/Anim.svelte";
+  import { hold } from "../../stores/pano.js";
 
   export let data
 
@@ -105,11 +106,12 @@
     var eventList = [
       'touchstart', 'touchmove', 'touchend', 'touchcancel',
       'pointerdown', 'pointermove', 'pointerup', 'pointercancel',
-      'wheel'
+      'wheel', 'click', 'mousedown'
     ];
     for (var i = 0; i < eventList.length; i++) {
       element.addEventListener(eventList[i], function(event: Event) {
         event.stopPropagation();
+        event.stopImmediatePropagation()
       });
     }
   }
@@ -212,15 +214,6 @@
       targetFov: Math.PI/2
     })
 
-    scenes.forEach(function(scene) {
-      var el = document.querySelector('#sceneList .scene[data-id="' + scene.data.id + '"]')
-      if (!el) return
-
-      el.addEventListener('click', function() {
-        switchScene(scene)
-      })
-    })
-
     // Display the initial scene.
     switchScene(scenes[0])
   });
@@ -231,6 +224,14 @@
     var view = viewer.view() as any
     console.log(view.screenToCoordinates({x : e.x, y: e.y}))
   }
+
+  const panoEventMouseDown = (e: Event) => {
+    $hold = true
+  }
+
+  const panoEventMouseUp = (e: Event) => {
+    $hold = false
+  }
 </script>
 
 <svelte:head>
@@ -240,8 +241,12 @@
   <style> @-ms-viewport { width: device-width; } </style>
 </svelte:head>
 
-<div id="pano" bind:this={viewerHTML} class="w-full h-screen" on:dblclick={getPitchYaw}/>
-<div class="fixed bottom-0 left-0 right-0 bg-black/60 text-white">
+<div id="pano" bind:this={viewerHTML}  class="w-full h-screen" on:dblclick={getPitchYaw}
+  on:mousedown={panoEventMouseDown}
+  on:mouseup={panoEventMouseUp}
+/>
+
+<div class="fixed bottom-0 left-0 right-0 bg-black/60 text-white select-none">
   <div class="text-center p-2">{currentScene.name}</div>
 
   <div class="absolute right-0 top-0 flex-none flex divide-x divide-transparent">
