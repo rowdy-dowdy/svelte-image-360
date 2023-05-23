@@ -12,7 +12,7 @@ function tmpFile(p: string) {
   return path.join(tmpdir(),p)
 }
 
-let saveInTemp = SAVE_TEMP
+let saveInTemp = SAVE_TEMP == "true"
 
 const compress = {
   'png': {compressionLevel: 8, quality: 60},
@@ -35,80 +35,55 @@ export const actions = {
     try {
       const data = await request.formData()
       
-      let title = data.get('title') as string,
-          image = data.get('image') as File
-      
-      if (!saveInTemp && !existsSync('./storage')) {
-        mkdirSync('./storage', { recursive: true })
-      }
-
-      let uuid = crypto.randomUUID()
-
-      return { success: true, uuid }
-    }
-    catch (e) {
-      return fail(400, { error: `Đã có lỗi xảy ra vui lòng thử lại sau` })
-    }
-  },
-
-  split2: async ({ cookies, request, url }) => {
-    try {
-      const data = await request.formData()
-      
-      let name = data.get('name') as string,
-          zooms = data.getAll('zooms[]') as string[],
+      let name = data.get('title') as string,
           b = data.get('b') as File,
           d = data.get('d') as File,
           f = data.get('f') as File,
           l = data.get('l') as File,
           r = data.get('r') as File,
           u = data.get('u') as File
+
+      await sharp(await (data.get('image') as File).arrayBuffer()).toFile('./storage/tiles/fasdf.png')
+      .then((data: any) => {
+        console.log(data)
+        return data
+      })
+
+      return { success: true }
       
       if (!saveInTemp && !existsSync('./storage')) {
         mkdirSync('./storage', { recursive: true })
       }
 
       let uuid = crypto.randomUUID()
-      let maxZoom = zooms.length > 0 ? +zooms[zooms.length - 1] : 3
 
-      for(let i = 0; i < zooms.length; i++) {
+      let metadata = await sharp(await b.arrayBuffer()).metadata()
+      let { size = 0, format, width } = metadata
+
+      console.log(1)
+
+      let maxZoom = Math.max(Math.floor(Math.log2(width!) - 8),3)
+
+      console.log(2)
+
+      for(let i = 0; i < maxZoom; i++) {
         await Promise.all([
-          slipImageFace(b, "b", name, +zooms[i],uuid, maxZoom),
-          slipImageFace(d, "d", name, +zooms[i],uuid, maxZoom),
-          slipImageFace(f, "f", name, +zooms[i],uuid, maxZoom),
-          slipImageFace(l, "l", name, +zooms[i],uuid, maxZoom),
-          slipImageFace(r, "r", name, +zooms[i],uuid, maxZoom),
-          slipImageFace(u, "u", name, +zooms[i],uuid, maxZoom),
+          slipImageFace(b, "b", name, i+1, uuid, maxZoom),
+          slipImageFace(d, "d", name, i+1, uuid, maxZoom),
+          slipImageFace(f, "f", name, i+1, uuid, maxZoom),
+          slipImageFace(l, "l", name, i+1, uuid, maxZoom),
+          slipImageFace(r, "r", name, i+1, uuid, maxZoom),
+          slipImageFace(u, "u", name, i+1, uuid, maxZoom),
         ])
       }
       await mergeImagePreview(b,d,f,l,r,u,name,uuid, maxZoom)
 
-      let metadata = await sharp(await b.arrayBuffer()).metadata()
-      let { size = 0, format } = metadata
       let tileSize = size / Math.pow(2,(maxZoom - 1))
 
-      let jsText = `
-      {
-        "id": "${name}",
-        "name": "${name}",
-        "levels": [
-          { "tileSize": ${tileSize/2}, "size": ${tileSize/2}, "fall backOnly": true },
-          ${new Array(maxZoom).fill(0).map((v,i) => {
-            return `\n{ "tileSize": ${tileSize}, "size": ${tileSize * Math.pow(2,i)} }`
-          }).toString()}
-        ],
-        "faceSize": ${size*2},
-        "initialViewParameters": {
-          "pitch": 0,
-          "yaw": 0,
-          "fov": 1.5707963267948966
-        },
-        "linkHotspots": [],
-      }`
-
-      return { success: true, jsText, zip: `${uuid}--${name}` }
+      return { success: true, zip: `${uuid}--${name}` }
     }
     catch (e) {
+      console.log({e})
       return fail(400, { error: `Đã có lỗi xảy ra vui lòng thử lại sau` })
     }
   },
@@ -144,7 +119,7 @@ const slipImageFace = async (
       let temp = image.clone()
       if (saveInTemp) {
         await temp.extract({left: j * distance, top: i * distance, width: distance, height: distance})
-          .jpeg({ quality: 60, force: true })
+          .jpeg({ quality: 60, force: true, mozjpeg: true })
           .toFile(tmpFile(`${uuid}/${name}/${zoom}/${faceName}/${i}/${j}.${format}`))
           .then((data: any) => {
             console.log(data)
@@ -153,8 +128,8 @@ const slipImageFace = async (
       }
       else {
         await temp.extract({left: j * distance, top: i * distance, width: distance, height: distance })
-          .jpeg({ quality: 60, force: true })
-          .toFile(`./storage/${uuid}/${name}/${zoom}/${faceName}/${i}/${j}.${format}`)
+          .jpeg({ quality: 60, force: true, mozjpeg: true })
+          .toFile(`./storage/tiles/${uuid}/${name}/${zoom}/${faceName}/${i}/${j}.${format}`)
           .then((data: any) => {
             console.log(data)
             return data
@@ -195,14 +170,14 @@ const mergeImagePreview = async(
   imagePreview.resize(width/Math.pow(2, maxZoom), width*6 / Math.pow(2, maxZoom))
 
   if (saveInTemp) {
-    await imagePreview.jpeg({ quality: 60, force: true }).toFile(tmpFile(`${uuid}/${name}/preview.${format}`))
+    await imagePreview.jpeg({ quality: 60, force: true, mozjpeg: true }).toFile(tmpFile(`${uuid}/${name}/preview.${format}`))
       .then((data: any) => {
         console.log(data)
         return data
       })
   }
   else {
-    await imagePreview.jpeg({ quality: 60, force: true }).toFile(`./storage/${uuid}/${name}/preview.${format}`)
+    await imagePreview.jpeg({ quality: 60, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/${name}/preview.${format}`)
       .then((data: any) => {
         console.log(data)
         return data

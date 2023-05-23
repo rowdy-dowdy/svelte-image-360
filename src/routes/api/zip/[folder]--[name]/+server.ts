@@ -12,7 +12,7 @@ function tmpFile(p: string) {
   return path.join(tmpdir(),p)
 }
 
-let saveInTemp = SAVE_TEMP
+let saveInTemp = SAVE_TEMP == "true"
 
 export const GET: RequestHandler = async ({ params, request, cookies }) => {
   let filepath = './storage/' + params.folder + '/' + params.name

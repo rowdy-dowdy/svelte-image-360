@@ -16,66 +16,70 @@
   let loading = false
 
   const facePositions = {
-    pz: {x: 1, y: 1},
-    nz: {x: 3, y: 1},
-    px: {x: 2, y: 1},
-    nx: {x: 0, y: 1},
-    py: {x: 1, y: 0},
-    ny: {x: 1, y: 2}
+    pz: {x: 1, y: 1, name: 'b'},
+    nz: {x: 3, y: 1, name: 'f'},
+    px: {x: 2, y: 1, name: 'l'},
+    nx: {x: 0, y: 1, name: 'r'},
+    py: {x: 1, y: 0, name: 'u'},
+    ny: {x: 1, y: 2, name: 'd'}
   }
 
   let canvas: HTMLCanvasElement
 
-  function getDataURL(imgData: any, extension: any) {
+  function getDataURL(imgData: ImageData, name: string): Promise<File> {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
 
-    canvas.width = imgData.width;
-    canvas.height = imgData.height;
-    ctx?.putImageData(imgData, 0, 0);
+    canvas.width = imgData.width
+    canvas.height = imgData.height
+    ctx?.putImageData(imgData, 0, 0)
     return new Promise(resolve => {
-      canvas.toBlob(blob => resolve(URL.createObjectURL(blob!)), 'image/jpeg', 0.92);
-    });
+      canvas.toBlob(blob => resolve(new File([blob!], name)), 'image/jpeg', 0.92);
+    })
   }
 
-  const renderFacesImages = (file: any) => {
-    if (!browser) return
+  const renderFacesImages = async (file: any): Promise<{name: string, file: File}[]> => {
+    return new Promise(resolve => {
+      if (!browser) return
 
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
 
-    const img = new Image();
+      const img = new Image();
 
-    img.src = URL.createObjectURL(file);
+      img.src = URL.createObjectURL(file);
 
-    img.addEventListener('load', async () => {
-      const { width, height } = img;
-      canvas.width = width;
-      canvas.height = height;
-      ctx.drawImage(img, 0, 0);
+      img.addEventListener('load', async () => {
+        const { width, height } = img;
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0);
 
-      const dataImage = ctx.getImageData(0, 0, width, height)
-  
-      for (let [faceName, position] of Object.entries(facePositions)) {
-        const options = {
-          data: dataImage,
-          face: faceName,
-          rotation: Math.PI * 180 / 180,
-          interpolation: "lanczos",
+        const dataImage = ctx.getImageData(0, 0, width, height)
+
+        let images: {name: string, file: File}[] = []
+    
+        for (let [faceName, position] of Object.entries(facePositions)) {
+          const options = {
+            data: dataImage,
+            face: faceName,
+            rotation: Math.PI * 180 / 180,
+            interpolation: "lanczos",
+          }
+
+          let imageData = renderFace(options)
+          console.log(imageData)
+
+          const x = imageData.width * position.x;
+          const y = imageData.height * position.y;
+
+          let temp = await getDataURL(imageData, faceName+'.jpg')
+          images.push({name: position.name, file: temp })
         }
 
-        let imageData = renderFace(options)
-        console.log(imageData)
-
-        const x = imageData.width * position.x;
-        const y = imageData.height * position.y;
-
-        let temp = await getDataURL(imageData, 'jpg')
-        console.log(temp)
-
-        return
-      }
-    });
+        resolve(images)
+      })
+    })
   }
 
 </script>
@@ -85,14 +89,18 @@
     class="w-full h-full flex flex-col"
     use:enhance={async ({ form, data, action, cancel, submitter }) => {
       loading = true
-      const image = data.get('image')
+      // const image = data.get('image')
 
-      await renderFacesImages(image)
-      console.log('end')
-      loading = false
-      cancel()
+      // let images = await renderFacesImages(image)
+
+      // images.forEach(v => {
+      //   data.append(v.name, v.file)
+      // })
+
+      // data.delete('image')
 
       return async ({ result, update }) => {
+        console.log({result})
         await applyAction(result);
         loading = false
       };
@@ -129,6 +137,7 @@
   </form>
 
   {#if loading}
+    <div class="fixed w-full h-full top-0 left-0"></div>
     <div class="absolute w-full h-full top-0 left-0 bg-white/80 grid place-items-center">
       <span class="icon w-16 h-16 animate-spin">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M12 22c5.421 0 10-4.579 10-10h-2c0 4.337-3.663 8-8 8s-8-3.663-8-8c0-4.336 3.663-8 8-8V2C6.579 2 2 6.58 2 12c0 5.421 4.579 10 10 10z"></path></svg>
