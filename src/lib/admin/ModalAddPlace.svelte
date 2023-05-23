@@ -1,9 +1,11 @@
 <script lang="ts">
   import { browser } from '$app/environment';
-  import { applyAction, enhance } from '$app/forms';
-  import { Drawer, Button, CloseButton, Label, Fileupload, Helper, Input } from 'flowbite-svelte'
+  import { applyAction, deserialize, enhance } from '$app/forms';
+  import { Drawer, Button, CloseButton, Label, Fileupload, Helper, Input, Progressbar } from 'flowbite-svelte'
   import { sineIn } from 'svelte/easing';
-  import { renderFace } from './convert';
+  import workerConvertURL from './convert?worker';
+  import { invalidateAll } from '$app/navigation';
+  import { onMount } from 'svelte';
 
   export let hidden = true
 
@@ -14,6 +16,13 @@
   }
 
   let loading = false
+  let step = 0
+
+  $: getPercent = () => {
+    if (step >= 6) return 100
+
+    return Math.round((step / 6) * 100)
+  }
 
   const facePositions = {
     pz: {x: 1, y: 1, name: 'b'},
@@ -38,74 +47,112 @@
     })
   }
 
-  const renderFacesImages = async (file: any): Promise<{name: string, file: File}[]> => {
-    return new Promise(resolve => {
-      if (!browser) return
+  let imageFaces: {name: string, file: File}[] = []
 
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
+  const getWorkerData = async ({data: imageData}: {data : ImageData}) => {
+    let faceOptions = Object.entries(facePositions)[imageFaces.length]
 
-      const img = new Image();
+    let position = faceOptions[1]
+    let temp = await getDataURL(imageData, position.name+'.jpg')
+    imageFaces.push({name: position.name, file: temp })
+    step += 1
 
-      img.src = URL.createObjectURL(file);
+    if (imageFaces.length == 6) {
+      // console.log(imageFaces)
+      sendRequestForm()
+    }
+    else {
+      worker?.postMessage(optionsFaces[imageFaces.length])
+    }
+  }
 
-      img.addEventListener('load', async () => {
-        const { width, height } = img;
-        canvas.width = width;
-        canvas.height = height;
-        ctx.drawImage(img, 0, 0);
+  let worker: Worker | null = null
+  let optionsFaces : {
+    data: ImageData;
+    face: string;
+    rotation: number;
+    interpolation: string;
+  }[] = []
 
-        const dataImage = ctx.getImageData(0, 0, width, height)
+  const renderFacesImages = async (file: any) => {
+    if (!browser) return
 
-        let images: {name: string, file: File}[] = []
-    
-        for (let [faceName, position] of Object.entries(facePositions)) {
-          const options = {
-            data: dataImage,
-            face: faceName,
-            rotation: Math.PI * 180 / 180,
-            interpolation: "lanczos",
-          }
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
 
-          let imageData = renderFace(options)
-          console.log(imageData)
+    const img = new Image();
 
-          const x = imageData.width * position.x;
-          const y = imageData.height * position.y;
+    img.src = URL.createObjectURL(file);
 
-          let temp = await getDataURL(imageData, faceName+'.jpg')
-          images.push({name: position.name, file: temp })
+    img.addEventListener('load', async () => {
+      const { width, height } = img;
+      canvas.width = width;
+      canvas.height = height;
+      ctx.drawImage(img, 0, 0);
+
+      const dataImage = ctx.getImageData(0, 0, width, height)
+  
+      for (let [faceName, position] of Object.entries(facePositions)) {
+        const options = {
+          data: dataImage,
+          face: faceName,
+          rotation: Math.PI * 180 / 180,
+          interpolation: "lanczos",
         }
-
-        resolve(images)
-      })
+        optionsFaces.push(options)
+      }
+      worker?.postMessage(optionsFaces[0])
     })
   }
+
+  let name: string = ''
+  let files: FileList
+
+  async function handleSubmit(event: Event) {
+    if (loading || files.length < 0) return
+
+    loading = true
+    imageFaces = []
+    
+    renderFacesImages(files[0])
+  }
+
+  const sendRequestForm = async () => {
+    let data: FormData = new FormData()
+    data.append('name', name)
+    imageFaces.forEach(v => {
+      data.append(v.name, v.file)
+    })
+
+    const response = await fetch("?/split", {
+      method: 'POST',
+      body: data
+    });
+    /** @type {import('@sveltejs/kit').ActionResult} */
+    const result = deserialize(await response.text());
+
+    if (result.type === 'success') {
+      await invalidateAll()
+
+      console.log({result})
+    }
+
+    applyAction(result)
+
+    loading = false
+  }
+
+  onMount(() => {
+    worker = new workerConvertURL()
+    worker.onmessage = getWorkerData
+  })
 
 </script>
 
 <Drawer class="w-[700px] px-6" placement='right' transitionType="fly" transitionParams={transitionParamsRight} bind:hidden={hidden} id='sidebar6'>
   <form action="?/split" method="post" enctype="multipart/form-data" 
     class="w-full h-full flex flex-col"
-    use:enhance={async ({ form, data, action, cancel, submitter }) => {
-      loading = true
-      // const image = data.get('image')
-
-      // let images = await renderFacesImages(image)
-
-      // images.forEach(v => {
-      //   data.append(v.name, v.file)
-      // })
-
-      // data.delete('image')
-
-      return async ({ result, update }) => {
-        console.log({result})
-        await applyAction(result);
-        loading = false
-      };
-    }}
-  >
+    on:submit|preventDefault={handleSubmit}>
     <div class='flex-none flex items-center'>
       <h5
         id="drawer-label"
@@ -121,12 +168,12 @@
     
     <div class="flex-grow min-h-0 py-6 border-y mb-6">
       <div class="">
-        <Label for="title" class="mb-2">Tiêu đề</Label>
-        <Input type="text" id="title" name="title" placeholder="Vd: Văn phòng KennaTech tầng 2" required />
+        <Label for="name" class="mb-2">Tiêu đề</Label>
+        <Input type="text" id="name" name="name" placeholder="Vd: Văn phòng KennaTech tầng 2" required bind:value={name} />
       </div>
       <div class="mt-6">
         <Label for="image" class="pb-2">Tải lên ảnh</Label>
-        <Fileupload id="image" class="mb-2" name="image" required />
+        <Fileupload id="image" class="mb-2" name="image" required bind:files={files} />
         <Helper>PNG, JPG (Tỷ lệ khung hình 2:1).</Helper>
       </div>
     </div>
@@ -139,9 +186,21 @@
   {#if loading}
     <div class="fixed w-full h-full top-0 left-0"></div>
     <div class="absolute w-full h-full top-0 left-0 bg-white/80 grid place-items-center">
-      <span class="icon w-16 h-16 animate-spin">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M12 22c5.421 0 10-4.579 10-10h-2c0 4.337-3.663 8-8 8s-8-3.663-8-8c0-4.336 3.663-8 8-8V2C6.579 2 2 6.58 2 12c0 5.421 4.579 10 10 10z"></path></svg>
-      </span>
+      {#if step < 6}
+        <div class="w-full px-6">
+          <div class="flex justify-between mb-1">
+            <span class="text-base font-medium text-blue-700 dark:text-white">Đang chuẩn bị ...</span>
+            <span class="text-sm font-medium text-blue-700 dark:text-white">{getPercent()}%</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+            <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-1000" style="width: {getPercent()}%"></div>
+          </div>
+        </div>
+      {:else}
+        <span class="icon w-16 h-16 animate-spin">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M12 22c5.421 0 10-4.579 10-10h-2c0 4.337-3.663 8-8 8s-8-3.663-8-8c0-4.336 3.663-8 8-8V2C6.579 2 2 6.58 2 12c0 5.421 4.579 10 10 10z"></path></svg>
+        </span>
+      {/if}
     </div>
   {/if}
 </Drawer>

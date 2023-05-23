@@ -36,10 +36,10 @@
         <img src="{user.image}" alt="logo" class="w-full h-full object-contain">
       </div>
       <Dropdown placement="top-start" triggeredBy="#userImage">
-        <DropdownItem>Dashboard</DropdownItem>
-        <DropdownItem>Logs</DropdownItem>
-        <DropdownItem>Settings</DropdownItem>
-        <DropdownItem slot="footer">Sign out</DropdownItem>
+        <DropdownItem>Bảng điều khiển</DropdownItem>
+        <DropdownItem>Nhật ký</DropdownItem>
+        <DropdownItem>Cài đặt</DropdownItem>
+        <DropdownItem slot="footer">Đăng xuất</DropdownItem>
       </Dropdown>
     </div>
   </div>

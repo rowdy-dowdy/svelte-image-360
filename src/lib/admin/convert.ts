@@ -154,7 +154,7 @@ const orientations = {
   }
 };
 
-export function renderFace({data: readData, face, rotation, interpolation, maxWidth = Infinity} : any) {
+function renderFace({data: readData, face, rotation, interpolation, maxWidth = Infinity} : any) {
 
   const faceWidth = Math.min(maxWidth, readData.width / 4);
   const faceHeight = faceWidth;
@@ -190,5 +190,13 @@ export function renderFace({data: readData, face, rotation, interpolation, maxWi
     }
   }
 
+  postMessage(writeData)
+
   return writeData
 }
+
+onmessage = function({data}) {
+  renderFace(data);
+};
+
+export {}

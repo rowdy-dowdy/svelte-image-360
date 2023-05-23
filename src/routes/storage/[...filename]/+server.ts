@@ -8,6 +8,8 @@ import prisma from "$lib/server/prismadb";
 export const GET = async ({ params, request, cookies }) => {
   const filepath = './storage/' + params.filename
 
+  console.log(filepath)
+
   if (!existsSync(filepath)){
     throw error(404, 'Not found');
   }
