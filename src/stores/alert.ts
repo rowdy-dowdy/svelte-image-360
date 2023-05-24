@@ -1,4 +1,5 @@
 import { writable } from 'svelte/store';
+import { v4 } from 'uuid';
 
 type AlertTypeWithoutId = {
   type: "success" | "error" | "warning"
@@ -16,11 +17,11 @@ function createAlert() {
 	return {
 		subscribe,
 		addAlert: (alert: AlertTypeWithoutId) => update(n => {
-      const uuid = crypto.randomUUID();
+      const uuid = v4();
       if (!alert.title) {
-        alert.title = alert.type == "success" ? "Yay! Mọi thứ đã hoạt động!"
-          : alert.type == "warning" ? "Uh oh! Đã xảy ra sự cố"
-          : "No! Có một lỗi đã xảy ra"
+        alert.title = alert.type == "success" ? "Tuyệt vời! Mọi thứ đã hoạt động!"
+          : alert.type == "warning" ? "Ôi không! Đã xảy ra sự cố"
+          : "Không! Có một lỗi đã xảy ra"
       }
 
       if (!alert.description) {

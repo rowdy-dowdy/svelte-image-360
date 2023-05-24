@@ -10,6 +10,7 @@ import path from 'path'
 import { SAVE_TEMP } from '$env/static/private'
 import db from '$lib/server/prismadb.js'
 import type { InfoHotspots, LinkHotspots, Scene } from '@prisma/client'
+import { v4 } from 'uuid';
 
 function tmpFile(p: string) {
   return path.join(tmpdir(),p)
@@ -45,7 +46,7 @@ type InitialViewParametersType = {
   fov: number
 }
 
-export type SceneType =  (Omit<Scene, 'levels' | 'initialViewParameters'> & {
+export type SceneDataType =  (Omit<Scene, 'levels' | 'initialViewParameters'> & {
   levels: LevelsType;
   initialViewParameters: InitialViewParametersType;
   infoHotspots: InfoHotspots[];
@@ -60,7 +61,7 @@ export const load = async () => {
     }
   })
 
-  let scenesData: SceneType[] = scenes.map(v => {
+  let scenesData: SceneDataType[] = scenes.map(v => {
     return {
       ...v,
       levels: JSON.parse(v.levels) as LevelsType,
@@ -84,7 +85,7 @@ export const actions = {
           r = data.get('r') as File,
           u = data.get('u') as File
 
-      let uuid = crypto.randomUUID()
+      let uuid = v4()
 
       let metadata = await sharp(await b.arrayBuffer()).metadata()
       let { format, width = 0 } = metadata
@@ -129,6 +130,172 @@ export const actions = {
     }
     catch (e) {
       console.log({e})
+      return fail(400, { error: `Đã có lỗi xảy ra vui lòng thử lại sau` })
+    }
+  },
+
+  createHotspot: async ({ cookies, request, url }) => {
+    try {
+      const data = await request.formData()
+      
+      let sceneId = data.get('sceneId') as string,
+          target = data.get('target') as string,
+          yaw = data.get('yaw') as string,
+          pitch = data.get('pitch') as string,
+          direction = data.get('direction') as string,
+          hotspotType = data.get('hotspotType') as string,
+          type = data.get('type') as string,
+          image = data.get('image') as File | null | undefined,
+          title = data.get('title') as string,
+          description = data.get('description') as string
+
+      if (hotspotType == "link") {
+        const linkHotspot = await db.linkHotspots.create({
+          data: {
+            sceneId: sceneId,
+            yaw: +yaw,
+            pitch: +pitch,
+            direction: direction,
+            target: target
+          }
+        })
+      }
+      else if (hotspotType == "info") {
+
+        let imageUrl: sharp.OutputInfo | null = null
+        let uuid = v4()
+        if (image && image?.size > 0) {
+
+          if (!saveInTemp && !existsSync(`./storage/info-hotspots`)) {
+            mkdirSync(`./storage/info-hotspots`, { recursive: true })
+          }
+
+          let imageFile = sharp(await image.arrayBuffer())
+          let { format } = await imageFile.metadata()
+          
+          imageUrl = await imageFile.jpeg({ quality: 60, force: true, mozjpeg: true })
+            .toFile(`./storage/info-hotspots/${uuid}.${format}`)
+            .then((data) => {
+              return data
+            })
+        }
+
+        const infoHotspot = await db.infoHotspots.create({
+          data: {
+            sceneId: sceneId,
+            yaw: +yaw,
+            pitch: +pitch,
+            direction: direction,
+            type: type,
+            title: title,
+            description: description,
+            image: imageUrl ? `./storage/info-hotspots/${uuid}.${imageUrl.format}` : null
+          }
+        })
+      }
+      else throw ""
+      return { success: true }
+    } 
+    catch (error) {
+      console.log({error})
+      return fail(400, { error: `Đã có lỗi xảy ra vui lòng thử lại sau` })
+    }
+  },
+
+  deleteHotspot: async ({ cookies, request, url }) => {
+    try {
+      const data = await request.formData()
+      
+      let id = data.get('id') as string,
+          type = data.get('type') as string
+
+      if (type == "link") {
+        const linkHotspot = await db.linkHotspots.delete({
+          where: {
+            id: id
+          }
+        })
+      }
+      else if (type == "info") {
+        const infoHotspot = await db.infoHotspots.delete({
+          where: {
+            id: id
+          }
+        })
+      } else {
+        throw ""
+      }
+
+      return { success: true }
+    } 
+    catch (error) {
+      console.log({error})
+      return fail(400, { error: `Đã có lỗi xảy ra vui lòng thử lại sau` })
+    }
+  },
+
+  editHotspot: async ({ cookies, request, url }) => {
+    try {
+      const data = await request.formData()
+      
+      let id = data.get('id') as string,
+          target = data.get('target') as string,
+          direction = data.get('direction') as string,
+          hotspotType = data.get('hotspotType') as string,
+          type = data.get('type') as string,
+          image = data.get('image') as File | null | undefined,
+          title = data.get('title') as string,
+          description = data.get('description') as string
+
+      if (hotspotType == "link") {
+        const linkHotspot = await db.linkHotspots.update({
+          where: {
+            id: id
+          },
+          data: {
+            direction: direction,
+            target: target
+          }
+        })
+      }
+      else if (hotspotType == "info") {
+
+        let imageUrl: sharp.OutputInfo | null = null
+        let uuid = v4()
+        if (image && image?.size > 0) {
+
+          if (!saveInTemp && !existsSync(`./storage/info-hotspots`)) {
+            mkdirSync(`./storage/info-hotspots`, { recursive: true })
+          }
+
+          let imageFile = sharp(await image.arrayBuffer())
+          let { format } = await imageFile.metadata()
+          
+          imageUrl = await imageFile.jpeg({ quality: 60, force: true, mozjpeg: true })
+            .toFile(`./storage/info-hotspots/${uuid}.${format}`)
+            .then((data) => {
+              return data
+            })
+        }
+
+        const infoHotspot = await db.infoHotspots.update({
+          where: {
+            id: id,
+          },
+          data: {
+            direction: direction,
+            type: type,
+            title: title,
+            description: description,
+            image: imageUrl ? `./storage/info-hotspots/${uuid}.${imageUrl.format}` : null
+          }
+        })
+      }
+      else throw ""
+      return { success: true }
+    } 
+    catch (error) {
+      console.log({error})
       return fail(400, { error: `Đã có lỗi xảy ra vui lòng thử lại sau` })
     }
   },
@@ -205,7 +372,7 @@ const mergeImagePreview = async(
   let { width = 0, format } = metadata
 
   let imagePreview = imageB.clone()
-  // imagePreview.resize(width, width*6)
+  imagePreview.resize(width, width*6)
 
   let metadata2 = await imageD.metadata()
   let metadata3 = await imageF.metadata()

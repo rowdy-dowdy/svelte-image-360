@@ -5,43 +5,100 @@
   import InfoHotSpot from "$lib/web/InfoHotSpot.svelte";
   import InfoHotSpot2 from "$lib/web/InfoHotSpot2.svelte";
   import InfoHotSpotVideo from "$lib/web/InfoHotSpotVideo.svelte";
-  import Anim from "$lib/web/Anim.svelte";
   import { hold } from "../../stores/pano.js";
   // import type { Scene } from "@prisma/client";
-  import type { SceneType } from "../../routes/admin/(admin)/+page.server.js";
+  import type { SceneDataType } from "../../routes/admin/(admin)/+page.server.js";
   import type { LinkHotspots, InfoHotspots } from "@prisma/client";
+  import { page } from "$app/stores";
+  import { goto } from "$app/navigation";
+  import { Button, Dropdown, DropdownDivider, DropdownItem, Indicator, Modal } from "flowbite-svelte";
+  import ModelAddHotspot from "./ModelAddHotspot.svelte";
+  import ModelDeleteHotspot from "./ModelDeleteHotspot.svelte";
+  import ModelEditHotspot from "./ModelEditHotspot.svelte";
 
-  export let data: SceneType[]
+  export let data: SceneDataType[]
 
-  let viewerHTML: HTMLElement | null = null;
-  let viewer: Marzipano.Viewer | null = null;
-  let scenes: {
-    data: SceneType,
-    scene: Marzipano.Scene,
+  let viewerHTML: HTMLElement | null = null
+  let viewer: Marzipano.Viewer | null = null
+
+  type SceneType = {
+    data: SceneDataType
+    scene: Marzipano.Scene
     view: Marzipano.RectilinearView
-  }[] = []
-  let autoRotate: Function | null = null
+  }
+
+  let scenes: SceneType[] = []
+
+  $: scenes = viewer ? data.map(function(data) {
+    var urlPrefix = "./tiles"
+    var source = Marzipano.ImageUrlSource.fromString(data.url + "/{z}/{f}/{y}/{x}.jpeg",
+      { cubeMapPreviewUrl: data.url + "/preview.jpeg" })
+    var geometry = new Marzipano.CubeGeometry(data.levels)
+
+    var limiter = Marzipano.RectilinearView.limit.traditional(data.faceSize, 100*Math.PI/180, 120*Math.PI/180)
+    var view = new Marzipano.RectilinearView(data.initialViewParameters, limiter)
+
+    var scene = viewer!.createScene({
+      source: source,
+      geometry: geometry,
+      view: view,
+      pinFirstLevel: true
+    })
+
+    // Create link hotspots.
+    data.linkHotspots.forEach(function(hotspot) {
+      var element = createLinkHotspotElement(hotspot)
+      scene?.hotspotContainer().createHotspot(element, { yaw: hotspot.yaw, pitch: hotspot.pitch })
+    })
+
+    // Create info hotspots.
+    data.infoHotspots.forEach(function(hotspot) {
+      var element = createInfoHotspotElement(hotspot)
+      scene?.hotspotContainer().createHotspot(element, { yaw: hotspot.yaw, pitch: hotspot.pitch })
+    })
+
+    return {
+      data: data,
+      scene: scene,
+      view: view
+    }
+  }) : [] as SceneType[]
+
+  let autoRotate: Function | null = Marzipano.autorotate({
+    yawSpeed: 0.03,
+    targetPitch: 0,
+    targetFov: Math.PI/2
+  })
+
   let currentScene = data[0] 
   let fullScreen = false
-  let autoRotateCheck = true
+  let autoRotateCheck = false
 
-  var viewerOpts = {
-    controls: {
-      mouseViewMode: "drag"
+  // web
+  $: sceneId = $page.url.searchParams.get('scene')
+  $: {
+    let scene = scenes.find(v => v?.data.id == sceneId)
+    if (scene) {
+      switchScene(scene)
     }
-  };
+  }
+
+  let showFormModalAdd = false
+  let coordinatesAdd = { yaw: 0, pitch: 0 }
 
   function startAutorotate() {
     if (!viewer || !autoRotate) return
 
-    viewer.startMovement(autoRotate);
-    viewer.setIdleMovement(3000, autoRotate);
+    viewer.startMovement(autoRotate)
+    viewer.setIdleMovement(3000, autoRotate)
+    autoRotateCheck = true
   }
 
   function stopAutorotate() {
     if (!viewer) return
-    viewer.stopMovement();
-    viewer.setIdleMovement(Infinity);
+    viewer.stopMovement()
+    viewer.setIdleMovement(Infinity)
+    autoRotateCheck = false
   }
 
   function createLinkHotspotElement(hotspot: LinkHotspots) {
@@ -50,7 +107,7 @@
 			target: wrapper,
 			props: {
         title: findSceneDataById(hotspot.target)?.name || "",
-        direction: hotspot.direction
+        direction: hotspot.direction as any
       }
 		});
 
@@ -62,7 +119,7 @@
 
     // Add click event handler.
     wrapper.addEventListener('click', function() {
-      switchScene(findSceneById(hotspot.target));
+      goto('/admin/?scene='+hotspot.target)
     });
     
     stopTouchAndScrollEventPropagation(wrapper);
@@ -120,7 +177,7 @@
 
   function findSceneById(id: string) {
     for (var i = 0; i < scenes.length; i++) {
-      if (scenes[i].data.id === id) {
+      if (scenes[i]?.data.id === id) {
         return scenes[i];
       }
     }
@@ -136,14 +193,12 @@
     return null;
   }
 
-  function switchScene(scene: any) {
-    stopAutorotate();
-    scene.view.setParameters(scene.data.initialViewParameters);
-    scene.scene.switchTo();
-    startAutorotate();
+  function switchScene(scene: SceneType) {
+    // stopAutorotate()
+    scene.view.setParameters(scene.data.initialViewParameters)
+    scene.scene.switchTo()
+    // startAutorotate()
     currentScene = scene.data
-    // updateSceneName(scene);
-    // updateSceneList(scene);
   }
 
   function toggleAutorotate() {
@@ -162,7 +217,7 @@
       fullScreen = true
     }
     else {
-      document.exitFullscreen();
+      document.exitFullscreen()
       fullScreen = false
     }
   }
@@ -170,60 +225,25 @@
   onMount(() => {
     if (!viewerHTML) return
     /// Create viewer.
-    viewer = new Marzipano.Viewer(viewerHTML, viewerOpts)
-
-    // Create scenes.
-    scenes = data.map(function(data) {
-      var urlPrefix = "./tiles"
-      var source = Marzipano.ImageUrlSource.fromString(data.url + "/{z}/{f}/{y}/{x}.jpeg",
-        { cubeMapPreviewUrl: data.url + "/preview.jpeg" })
-      var geometry = new Marzipano.CubeGeometry(data.levels)
-
-      var limiter = Marzipano.RectilinearView.limit.traditional(data.faceSize, 100*Math.PI/180, 120*Math.PI/180)
-      var view = new Marzipano.RectilinearView(data.initialViewParameters, limiter)
-
-      var scene = viewer!.createScene({
-        source: source,
-        geometry: geometry,
-        view: view,
-        pinFirstLevel: true
-      })
-
-      // Create link hotspots.
-      data.linkHotspots.forEach(function(hotspot) {
-        var element = createLinkHotspotElement(hotspot)
-        scene.hotspotContainer().createHotspot(element, { yaw: hotspot.yaw, pitch: hotspot.pitch })
-      })
-
-      // Create info hotspots.
-      data.infoHotspots.forEach(function(hotspot) {
-        var element = createInfoHotspotElement(hotspot)
-        scene.hotspotContainer().createHotspot(element, { yaw: hotspot.yaw, pitch: hotspot.pitch })
-      })
-
-      return {
-        data: data,
-        scene: scene,
-        view: view
+    viewer = new Marzipano.Viewer(viewerHTML, {
+      controls: {
+        mouseViewMode: "drag"
       }
     })
-
-    // Set up autorotate, if enabled.
-    autoRotate = Marzipano.autorotate({
-      yawSpeed: 0.03,
-      targetPitch: 0,
-      targetFov: Math.PI/2
-    })
-
-    // Display the initial scene.
-    switchScene(scenes[0])
   });
 
   const getPitchYaw = (e: MouseEvent) => {
     if (!viewer) return
 
-    var view = viewer.view() as any
-    console.log(view.screenToCoordinates({x : e.x, y: e.y}))
+    var rect = (e.target as HTMLElement).getBoundingClientRect()
+    let coordinates = (viewer.view() as any).screenToCoordinates({x : e.clientX - rect.left, y: e.clientY - rect.top})
+
+    coordinatesAdd = {
+      yaw: coordinates.yaw,
+      pitch: coordinates.pitch
+    }
+
+    showFormModalAdd = true
   }
 
   const panoEventMouseDown = (e: Event) => {
@@ -232,6 +252,32 @@
 
   const panoEventMouseUp = (e: Event) => {
     $hold = false
+  }
+
+  let popupDeleteHotspot = false
+  let valueDeleteHotspot: {
+    id: string
+    type: 'link' | 'info'
+  } | null = null
+  const deleteHotspot = (id: string, type: 'link' | 'info') => {
+    valueDeleteHotspot = {
+      id,
+      type
+    }
+    popupDeleteHotspot = true
+  }
+
+  let showFormModalEdit = false
+  let valueEditHotspot: {
+    type: 'info' | "link"
+    value: LinkHotspots | InfoHotspots
+  } | null = null
+  const editHotspot = (value: LinkHotspots | InfoHotspots, type: 'link' | 'info') => {
+    valueEditHotspot = {
+      type,
+      value
+    }
+    showFormModalEdit = true
   }
 </script>
 
@@ -247,7 +293,17 @@
   on:mouseup={panoEventMouseUp}
 />
 
-<div class="absolute bottom-0 left-0 right-0 bg-black/60 text-white select-none">
+<div class="options-bar absolute bottom-0 left-0 right-0 bg-black/60 text-white select-none">
+  <div class="absolute left-0 top-0 flex-none flex divide-x divide-transparent">
+    <span class="icon w-10 h-10 p-2 bg-black cursor-pointer" on:click={toggleAutorotate}>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="m18.988 2.012 3 3L19.701 7.3l-3-3zM8 16h3l7.287-7.287-3-3L8 13z"></path><path d="M19 19H8.158c-.026 0-.053.01-.079.01-.033 0-.066-.009-.1-.01H5V5h6.847l2-2H5c-1.103 0-2 .896-2 2v14c0 1.104.897 2 2 2h14a2 2 0 0 0 2-2v-8.668l-2 2V19z"></path></svg>
+    </span>
+
+    <span class="icon w-10 h-10 p-2 bg-black cursor-pointer">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M5 20a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8h2V6h-4V4a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2H3v2h2zM9 4h6v2H9zM8 8h9v12H7V8z"></path><path d="M9 10h2v8H9zm4 0h2v8h-2z"></path></svg>
+    </span>
+    
+  </div>
   <div class="text-center p-2">{currentScene.name}</div>
 
   <div class="absolute right-0 top-0 flex-none flex divide-x divide-transparent">
@@ -272,6 +328,64 @@
     {/if}
   </div>
 </div>
+
+<div class="absolute top-0 left-0 bg-black/60 text-white px-2">
+  Nhấp chuột 2 lần để thêm mới điểm nóng
+</div>
+
+<ModelAddHotspot bind:showFormModalAdd={showFormModalAdd} bind:coordinatesAdd={coordinatesAdd} bind:scenes={data}/>
+
+<div class="absolute top-0 right-0 p-4">
+  <Button class="gap-2">
+    Danh sách điểm nóng
+    <Indicator color="none" class="bg-primary-200 text-xs text-primary-800 font-semibold" size="lg"
+      >{currentScene.infoHotspots.length + currentScene.linkHotspots.length}</Indicator>
+  </Button>
+  <Dropdown class="w-96 overflow-y-auto py-1 max-h-[600px]" placement="bottom-end">
+    {#each currentScene.linkHotspots as item (item.id)}
+      <DropdownItem class="flex items-center text-base font-semibold gap-2 cursor-auto">
+        <span class="flex-none icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M8.465 11.293c1.133-1.133 3.109-1.133 4.242 0l.707.707 1.414-1.414-.707-.707c-.943-.944-2.199-1.465-3.535-1.465s-2.592.521-3.535 1.465L4.929 12a5.008 5.008 0 0 0 0 7.071 4.983 4.983 0 0 0 3.535 1.462A4.982 4.982 0 0 0 12 19.071l.707-.707-1.414-1.414-.707.707a3.007 3.007 0 0 1-4.243 0 3.005 3.005 0 0 1 0-4.243l2.122-2.121z"></path><path d="m12 4.929-.707.707 1.414 1.414.707-.707a3.007 3.007 0 0 1 4.243 0 3.005 3.005 0 0 1 0 4.243l-2.122 2.121c-1.133 1.133-3.109 1.133-4.242 0L10.586 12l-1.414 1.414.707.707c.943.944 2.199 1.465 3.535 1.465s2.592-.521 3.535-1.465L19.071 12a5.008 5.008 0 0 0 0-7.071 5.006 5.006 0 0 0-7.071 0z"></path></svg></span>
+        <span class="flex-grow min-w-0">{findSceneDataById(item.target)?.name || 'Liên kết'}</span>
+
+        <span class="flex-none icon p-1 hover:text-sky-600 cursor-pointer"
+          on:click|preventDefault={() => editHotspot(item, 'link')}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="m18.988 2.012 3 3L19.701 7.3l-3-3zM8 16h3l7.287-7.287-3-3L8 13z"></path><path d="M19 19H8.158c-.026 0-.053.01-.079.01-.033 0-.066-.009-.1-.01H5V5h6.847l2-2H5c-1.103 0-2 .896-2 2v14c0 1.104.897 2 2 2h14a2 2 0 0 0 2-2v-8.668l-2 2V19z"></path></svg>
+        </span>
+        <span class="flex-none icon p-1 hover:text-red-600 cursor-pointer"
+          on:click|preventDefault={() => deleteHotspot(item.id, 'link')}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M5 20a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8h2V6h-4V4a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2H3v2h2zM9 4h6v2H9zM8 8h9v12H7V8z"></path><path d="M9 10h2v8H9zm4 0h2v8h-2z"></path></svg>
+        </span>
+      </DropdownItem>
+    {/each}
+
+    {#if currentScene.infoHotspots.length > 0 && currentScene.linkHotspots.length > 0}
+      <DropdownDivider />
+    {/if}
+
+    {#each currentScene.infoHotspots as item (item.id)}
+      <DropdownItem class="flex items-center text-base font-semibold gap-2 cursor-auto">
+        <span class="flex-none icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z"></path><path d="M11 11h2v6h-2zm0-4h2v2h-2z"></path></svg></span>
+        <span class="flex-grow min-w-0">{item.title}</span>
+
+        <span class="flex-none icon p-1 hover:text-sky-600 cursor-pointer"
+          on:click|preventDefault={() => editHotspot(item, 'info')}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="m18.988 2.012 3 3L19.701 7.3l-3-3zM8 16h3l7.287-7.287-3-3L8 13z"></path><path d="M19 19H8.158c-.026 0-.053.01-.079.01-.033 0-.066-.009-.1-.01H5V5h6.847l2-2H5c-1.103 0-2 .896-2 2v14c0 1.104.897 2 2 2h14a2 2 0 0 0 2-2v-8.668l-2 2V19z"></path></svg>
+        </span>
+        <span class="flex-none icon p-1 hover:text-red-600 cursor-pointer"
+          on:click|preventDefault={() => deleteHotspot(item.id, 'info')}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M5 20a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8h2V6h-4V4a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2H3v2h2zM9 4h6v2H9zM8 8h9v12H7V8z"></path><path d="M9 10h2v8H9zm4 0h2v8h-2z"></path></svg>
+        </span>
+      </DropdownItem>
+    {/each}
+  </Dropdown>
+</div>
+
+<ModelDeleteHotspot bind:popupDeleteHotspot={popupDeleteHotspot} bind:valueDeleteHotspot={valueDeleteHotspot} />
+<ModelEditHotspot bind:scenes={data} bind:valueEditHotspot={valueEditHotspot} bind:showFormModalEdit={showFormModalEdit} />
 
 <style>
   :global(#pano > canvas ~ div) {

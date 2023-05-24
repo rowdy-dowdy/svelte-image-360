@@ -58,8 +58,8 @@ export const actions = {
       },
     })
 
-    cookies.set('token_admin', token, { path: '/', httpOnly: true, maxAge: 3600 })
-    cookies.set('refresh_token_admin', refreshToken, { path: '/', httpOnly: true, maxAge: remember ? 2592000 : 86400 })
+    cookies.set('token_admin', token, { path: '/', httpOnly: true, secure: false, maxAge: 3600 })
+    cookies.set('refresh_token_admin', refreshToken, { path: '/', httpOnly: true, secure: false, maxAge: remember ? 2592000 : 86400 })
 
     throw redirect(302, url.searchParams.get('redirect_url') || "/admin")
 
@@ -77,8 +77,8 @@ export const actions = {
       },
     })
 
-    event.cookies.delete('token_admin', { path: '/' })
-    event.cookies.delete('refresh_token_admin', { path: '/' })
+    event.cookies.delete('token_admin', { path: '/', httpOnly: true, secure: false, })
+    event.cookies.delete('refresh_token_admin', { path: '/', httpOnly: true, secure: false, })
     event.locals.session.adminId = null
 
     // return { success: true }

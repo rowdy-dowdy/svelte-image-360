@@ -47,8 +47,6 @@ model InfoHotspots {
   id          String  @id @default(uuid())
   yaw         Float
   pitch       Float
-  rotation    Float?
-  target      String?
   direction   String?
   title       String?
   description String?
@@ -63,9 +61,8 @@ model LinkHotspots {
   id        String  @id @default(uuid())
   yaw       Float
   pitch     Float
-  rotation  Float?
-  target    String
   direction String
+  target    String
 
   sceneId String
   scene   Scene  @relation(fields: [sceneId], references: [id])
