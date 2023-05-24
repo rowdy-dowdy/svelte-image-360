@@ -295,11 +295,11 @@
 
 <div class="options-bar absolute bottom-0 left-0 right-0 bg-black/60 text-white select-none">
   <div class="absolute left-0 top-0 flex-none flex divide-x divide-transparent">
-    <span class="icon w-10 h-10 p-2 bg-black cursor-pointer" on:click={toggleAutorotate}>
+    <span class="icon w-10 h-10 p-2 bg-sky-600 cursor-pointer" on:click={toggleAutorotate}>
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="m18.988 2.012 3 3L19.701 7.3l-3-3zM8 16h3l7.287-7.287-3-3L8 13z"></path><path d="M19 19H8.158c-.026 0-.053.01-.079.01-.033 0-.066-.009-.1-.01H5V5h6.847l2-2H5c-1.103 0-2 .896-2 2v14c0 1.104.897 2 2 2h14a2 2 0 0 0 2-2v-8.668l-2 2V19z"></path></svg>
     </span>
 
-    <span class="icon w-10 h-10 p-2 bg-black cursor-pointer">
+    <span class="icon w-10 h-10 p-2 bg-red-600 cursor-pointer">
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M5 20a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8h2V6h-4V4a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2H3v2h2zM9 4h6v2H9zM8 8h9v12H7V8z"></path><path d="M9 10h2v8H9zm4 0h2v8h-2z"></path></svg>
     </span>
     
@@ -329,8 +329,8 @@
   </div>
 </div>
 
-<div class="absolute top-0 left-0 bg-black/60 text-white px-2">
-  Nhấp chuột 2 lần để thêm mới điểm nóng
+<div class="absolute top-0 left-0 bg-black/60 text-white px-2 py-1">
+  Nhấp đúp chuột để thêm mới điểm nóng
 </div>
 
 <ModelAddHotspot bind:showFormModalAdd={showFormModalAdd} bind:coordinatesAdd={coordinatesAdd} bind:scenes={data}/>
@@ -342,6 +342,10 @@
       >{currentScene.infoHotspots.length + currentScene.linkHotspots.length}</Indicator>
   </Button>
   <Dropdown class="w-96 overflow-y-auto py-1 max-h-[600px]" placement="bottom-end">
+    {#if currentScene.infoHotspots.length + currentScene.linkHotspots.length == 0}
+      <p class="px-4 py-2 text-center">Không có điểm nóng nào</p>
+    {/if}
+
     {#each currentScene.linkHotspots as item (item.id)}
       <DropdownItem class="flex items-center text-base font-semibold gap-2 cursor-auto">
         <span class="flex-none icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M8.465 11.293c1.133-1.133 3.109-1.133 4.242 0l.707.707 1.414-1.414-.707-.707c-.943-.944-2.199-1.465-3.535-1.465s-2.592.521-3.535 1.465L4.929 12a5.008 5.008 0 0 0 0 7.071 4.983 4.983 0 0 0 3.535 1.462A4.982 4.982 0 0 0 12 19.071l.707-.707-1.414-1.414-.707.707a3.007 3.007 0 0 1-4.243 0 3.005 3.005 0 0 1 0-4.243l2.122-2.121z"></path><path d="m12 4.929-.707.707 1.414 1.414.707-.707a3.007 3.007 0 0 1 4.243 0 3.005 3.005 0 0 1 0 4.243l-2.122 2.121c-1.133 1.133-3.109 1.133-4.242 0L10.586 12l-1.414 1.414.707.707c.943.944 2.199 1.465 3.535 1.465s2.592-.521 3.535-1.465L19.071 12a5.008 5.008 0 0 0 0-7.071 5.006 5.006 0 0 0-7.071 0z"></path></svg></span>

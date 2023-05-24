@@ -1,7 +1,7 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { applyAction, deserialize, enhance } from '$app/forms';
-  import { Drawer, Button, CloseButton, Label, Fileupload, Helper, Input, Progressbar } from 'flowbite-svelte'
+  import { Drawer, Button, CloseButton, Label, Fileupload, Helper, Input, Progressbar, Textarea } from 'flowbite-svelte'
   import { sineIn } from 'svelte/easing';
   import workerConvertURL from './convert?worker';
   import { invalidateAll } from '$app/navigation';
@@ -173,10 +173,20 @@
       </div>
       <div class="mt-6">
         <Label for="image" class="pb-2">Tải lên ảnh</Label>
-        <Fileupload id="image" class="mb-2" name="image" required bind:files={files} />
+        <Fileupload accept="image/*" id="image" class="mb-2" name="image" required bind:files={files} />
         <Helper>PNG, JPG (Tỷ lệ khung hình 2:1).</Helper>
       </div>
+      <div class="mt-6">
+        <Label for="image" class="pb-2">Âm thanh</Label>
+        <Fileupload accept=".mp3,audio/*" id="image" class="mb-2" name="image" required bind:files={files} />
+        <Helper>MP3, audio.</Helper>
+      </div>
+      <div class="mt-6">
+        <Label for="description" class="mb-2">Nội dung</Label>
+        <Textarea id="description" placeholder="Nội dung" rows="10" name="description" />
+      </div>
     </div>
+    
     <div class="!mt-auto flex-none flex justify-end">
       <Button color="none" class="px-12" on:click={() => hidden = true}>Cancel</Button>
       <Button type="submit" class="px-12">Create</Button>

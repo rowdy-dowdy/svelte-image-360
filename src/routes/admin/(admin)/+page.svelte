@@ -1,7 +1,7 @@
 <script>
   import { goto } from "$app/navigation";
   import AdminImage360 from "$lib/admin/AdminImage360.svelte";
-  import ModalAddPlace from "$lib/admin/ModalAddPlace.svelte";
+  import ModalAddScene from "$lib/admin/ModalAddScene.svelte";
   import { removeAccents } from "$lib/utils/hepler";
   import { Button, Input } from "flowbite-svelte";
   import { page } from "$app/stores";
@@ -72,4 +72,4 @@
   </div>
 </div>
 
-<ModalAddPlace bind:hidden={hiddenAddModal} />
+<ModalAddScene bind:hidden={hiddenAddModal} />
