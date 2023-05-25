@@ -1,13 +1,11 @@
 <script lang="ts">
   import { applyAction, deserialize } from "$app/forms";
-  import { invalidateAll } from "$app/navigation";
+  import { goto, invalidateAll } from "$app/navigation";
   import { Button, Modal, Spinner } from "flowbite-svelte";
   import { alertStore } from "../../stores/alert";
-  export let popupDeleteHotspot = false
-  export let valueDeleteHotspot: {
-    id: string
-    type: 'link' | 'info'
-  } | null = null
+  import { createEventDispatcher } from "svelte";
+  export let popupDelete = false
+  export let valueDelete: string | null = null
 
   let loading = false
 
@@ -16,10 +14,9 @@
     loading = true
 
     let data: FormData = new FormData(e.target as HTMLFormElement)
-    data.append('id', valueDeleteHotspot?.id || "")
-    data.append('type', valueDeleteHotspot?.type || "")
+    data.append('id', valueDelete || "")
 
-    const response = await fetch("/admin?/deleteHotspot", {
+    const response = await fetch("/admin?/deleteScene", {
       method: 'POST',
       body: data
     });
@@ -42,11 +39,12 @@
     applyAction(result)
 
     loading = false
-    popupDeleteHotspot = false
+    popupDelete = false
+    goto('')
   }
 
 </script>
-<Modal id="popupDeleteHotspot" bind:open={popupDeleteHotspot} size="xs" outsideclose={true}>
+<Modal id="popupDeleteHotspot" bind:open={popupDelete} size="xs" outsideclose={true}>
   <form method="post" on:submit|preventDefault={handleSubmit}>
     <div class="text-center">
       <svg
@@ -62,7 +60,7 @@
           stroke-width="2"
           d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
       <h3 class="mb-5 text-lg font-normal text-gray-500 dark:text-gray-400">
-        Bạn có chắc chắc chắn muốn xóa bỏ liên kết điểm nóng này?
+        Bạn có chắc chắc chắn muốn xóa bỏ bối cảnh này?
       </h3>
       <Button type="submit" color="red" class="mr-2">
         {#if loading}
@@ -71,7 +69,7 @@
           Xóa bỏ
         {/if}
       </Button>
-      <Button color="alternative" on:click={() => popupDeleteHotspot = false}>Hủy bỏ</Button>
+      <Button color="alternative" on:click={() => popupDelete = false}>Hủy bỏ</Button>
     </div>
   </form>
 </Modal>

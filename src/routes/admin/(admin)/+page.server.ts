@@ -2,7 +2,7 @@ export const ssr = false;
 
 import { fail } from '@sveltejs/kit'
 import * as fs from 'fs/promises'
-import { existsSync, mkdirSync } from "fs"
+import { existsSync, mkdirSync, rmSync } from "fs"
 import sharp from "sharp"
 import AdmZip from "adm-zip"
 import {tmpdir, type} from 'os'
@@ -11,12 +11,12 @@ import { SAVE_TEMP } from '$env/static/private'
 import db from '$lib/server/prismadb.js'
 import type { InfoHotspots, LinkHotspots, Scene } from '@prisma/client'
 import { v4 } from 'uuid';
+import { ImageData, createCanvas, loadImage } from "canvas";
+import { getDataURL, renderFace, renderFacePromise } from '$lib/admin/convertServer.js';
 
 function tmpFile(p: string) {
   return path.join(tmpdir(),p)
 }
-
-let saveInTemp = SAVE_TEMP == "true"
 
 const compress = {
   'png': {compressionLevel: 8, quality: 60},
@@ -26,21 +26,21 @@ const compress = {
 }
 
 const facePositions = {
-  pz: {x: 1, y: 1},
-  nz: {x: 3, y: 1},
-  px: {x: 2, y: 1},
-  nx: {x: 0, y: 1},
-  py: {x: 1, y: 0},
-  ny: {x: 1, y: 2}
+  pz: {x: 1, y: 1, name: 'b'},
+  nz: {x: 3, y: 1, name: 'f'},
+  px: {x: 2, y: 1, name: 'l'},
+  nx: {x: 0, y: 1, name: 'r'},
+  py: {x: 1, y: 0, name: 'u'},
+  ny: {x: 1, y: 2, name: 'd'}
 }
 
-type LevelsType = {
+export type LevelsType = {
   tileSize: number,
   size: number,
   fallbackOnly?: boolean
 }[]
 
-type InitialViewParametersType = {
+export type InitialViewParametersType = {
   pitch: number,
   yaw: number,
   fov: number
@@ -73,25 +73,62 @@ export const load = async () => {
 }
 
 export const actions = {
-  split: async ({ cookies, request, url }) => {
+  addScene: async ({ cookies, request, url }) => {
     try {
       const data = await request.formData()
-      
       let name = data.get('name') as string,
-          b = data.get('b') as File,
-          d = data.get('d') as File,
-          f = data.get('f') as File,
-          l = data.get('l') as File,
-          r = data.get('r') as File,
-          u = data.get('u') as File
+        image = data.get('image') as File,
+        audio = data.get('audio') as File,
+        description = data.get('description') as string
 
-      let uuid = v4()
+      const canvas = createCanvas(200, 200)
+      const ctx = canvas.getContext('2d')
 
-      let metadata = await sharp(await b.arrayBuffer()).metadata()
-      let { format, width = 0 } = metadata
+      // image 360 to cube map
+      let renderOptions = await loadImage(Buffer.from(await image.arrayBuffer())).then((image) => {
+        const { width, height } = image
+        canvas.width = width
+        canvas.height = height
+        ctx.drawImage(image, 0, 0, width, height)
+      
+        const dataImage = ctx.getImageData(0, 0, width, height)
+
+        let renderOptions = []
+    
+        for (let [faceName, position] of Object.entries(facePositions)) {
+          const options = {
+            data: dataImage,
+            face: faceName,
+            rotation: Math.PI * 180 / 180,
+            interpolation: "lanczos",
+          }
+          renderOptions.push(options)
+        }
+
+        return renderOptions
+      })
+
+      let images = await Promise.all(renderOptions.map(v => {
+        return renderFacePromise(v)
+      }))
+
+      const findImage = (name: string) => 
+        getDataURL(images[Object.entries(facePositions).findIndex(v => v[1].name == name)])
+
+      let b = findImage("b"),
+          d = findImage("d"),
+          f = findImage("f"),
+          l = findImage("l"),
+          r = findImage("r"),
+          u = findImage("u")
+          let uuid = v4()
+
+      let metadata = await sharp(b).metadata()
+      let { width = 0 } = metadata
 
       let maxZoom = Math.max(Math.floor(Math.log2(width!) - 8),3)
 
+      // save image tiles
       for(let i = 0; i < maxZoom; i++) {
         await Promise.all([
           slipImageFace(b, "b", name, i+1, uuid, maxZoom),
@@ -103,6 +140,20 @@ export const actions = {
         ])
       }
       await mergeImagePreview(b,d,f,l,r,u,name,uuid, maxZoom)
+
+      if (!existsSync(`./storage/tiles/${uuid}`)) {
+        mkdirSync(`./storage/tiles/${uuid}`, { recursive: true })
+      }
+    
+      //save image demo
+      const imageDemo = await sharp(await image.arrayBuffer()).jpeg({ quality: 60, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/demo.jpg`)
+        .then((data: any) => {
+          return data
+        })
+
+      // save audio file
+      let typeAduio = audio.type.split('/')[1]
+      await fs.writeFile(`./storage/tiles/${uuid}/audio.${typeAduio}`, audio.stream() as any)
 
       let tileSize = width / Math.pow(2,(maxZoom - 1))
 
@@ -122,13 +173,80 @@ export const actions = {
             ${new Array(maxZoom).fill(0).map((v,i) => {
               return `{ "tileSize": ${tileSize}, "size": ${tileSize * Math.pow(2,i)} }`
             }).toString()}
-          ]`
+          ]`,
+          description: description,
+          audio: `./storage/tiles/${uuid}/audio.${typeAduio}`
         }
       })
 
       return { success: true, scene }
     }
-    catch (e) {
+    catch(e) {
+      console.log({e})
+      return fail(400, { error: `Đã có lỗi xảy ra vui lòng thử lại sau` })
+    }
+  },
+
+  deleteScene: async ({ cookies, request, url }) => {
+    try {
+      const data = await request.formData()
+      
+      let id = data.get('id') as string
+
+      const scene = await db.scene.delete({
+        where: {
+          id: id
+        }
+      })
+
+      // await rmSync(`./storage/tiles/${id}`, { recursive: true })
+      await fs.rm(`./storage/tiles/${id}`, { recursive: true })
+
+      return { success: true }
+    } 
+    catch (error) {
+      console.log({error})
+      return fail(400, { error: `Đã có lỗi xảy ra vui lòng thử lại sau` })
+    }
+  },
+
+  updateScene: async ({ cookies, request, url }) => {
+    try {
+      const data = await request.formData()
+      let name = data.get('name') as string,
+        audio = data.get('audio') as File,
+        oldAduio = data.get('oldAduio') as string,
+        id = data.get('id') as string,
+        description = data.get('description') as string
+
+      // save audio file
+      let audioUrl = null
+      if (audio && audio.size > 0) {
+        console.log({audio})
+        let typeAduio = audio.type.split('/')[1]
+        await fs.writeFile(`./storage/tiles/${id}/audio.${typeAduio}`, audio.stream() as any)
+        audioUrl = `./storage/tiles/${id}/audio.${typeAduio}`
+      }
+      
+      let dataUpdate: any = {
+        name: name,
+        description: description,
+      }
+
+      if (!oldAduio) {
+        dataUpdate = {...dataUpdate, audio: audioUrl}
+      }
+
+      const scene = await db.scene.update({
+        where: {
+          id: id,
+        },
+        data: dataUpdate
+      })
+
+      return { success: true, scene }
+    }
+    catch(e) {
       console.log({e})
       return fail(400, { error: `Đã có lỗi xảy ra vui lòng thử lại sau` })
     }
@@ -166,14 +284,14 @@ export const actions = {
         let uuid = v4()
         if (image && image?.size > 0) {
 
-          if (!saveInTemp && !existsSync(`./storage/info-hotspots`)) {
+          if (!existsSync(`./storage/info-hotspots`)) {
             mkdirSync(`./storage/info-hotspots`, { recursive: true })
           }
 
           let imageFile = sharp(await image.arrayBuffer())
           let { format } = await imageFile.metadata()
           
-          imageUrl = await imageFile.jpeg({ quality: 60, force: true, mozjpeg: true })
+          imageUrl = await imageFile
             .toFile(`./storage/info-hotspots/${uuid}.${format}`)
             .then((data) => {
               return data
@@ -264,14 +382,14 @@ export const actions = {
         let uuid = v4()
         if (image && image?.size > 0) {
 
-          if (!saveInTemp && !existsSync(`./storage/info-hotspots`)) {
+          if (!existsSync(`./storage/info-hotspots`)) {
             mkdirSync(`./storage/info-hotspots`, { recursive: true })
           }
 
           let imageFile = sharp(await image.arrayBuffer())
           let { format } = await imageFile.metadata()
           
-          imageUrl = await imageFile.jpeg({ quality: 60, force: true, mozjpeg: true })
+          imageUrl = await imageFile
             .toFile(`./storage/info-hotspots/${uuid}.${format}`)
             .then((data) => {
               return data
@@ -302,17 +420,17 @@ export const actions = {
 }
 
 const slipImageFace = async (
-  file: File, faceName: string, name: string, zoom: number, uuid: string,
+  file: Buffer, faceName: string, name: string, zoom: number, uuid: string,
   maxZoom: number
 ) => {
-  const image = sharp(await file.arrayBuffer())
+  const image = sharp(file)
 
   if (["d", "u"].findIndex(v => v == faceName) >= 0) {
     image.rotate(180)
   }
 
   let metadata = await image.metadata()
-  let { width = 0, height = 0, format } = metadata
+  let { width = 0, height = 0 } = metadata
 
   if (zoom < maxZoom) {
     image.resize(Math.round(width/Math.pow(2,maxZoom - zoom)), Math.round(height/Math.pow(2,maxZoom - zoom)))
@@ -329,47 +447,36 @@ const slipImageFace = async (
   for(let i = 0; i < length; i++) {
     for(let j = 0; j < length; j++) {
 
-      if (!saveInTemp && !existsSync(`./storage/tiles/${uuid}/${zoom}/${faceName}/${i}`)) {
+      if (!existsSync(`./storage/tiles/${uuid}/${zoom}/${faceName}/${i}`)) {
         mkdirSync(`./storage/tiles/${uuid}/${zoom}/${faceName}/${i}`, { recursive: true })
       }
       
       let temp = image.clone()
-      if (saveInTemp) {
-        await temp.extract({left: j * distance, top: i * distance, width: distance, height: distance})
-          .jpeg({ quality: 60, force: true, mozjpeg: true })
-          .toFile(tmpFile(`${uuid}/${name}/${zoom}/${faceName}/${i}/${j}.${format}`))
-          .then((data: any) => {
-            console.log(data)
-            return data
-          })
-      }
-      else {
-        await temp.extract({left: j * distance, top: i * distance, width: distance, height: distance })
-          .jpeg({ quality: 60, force: true, mozjpeg: true })
-          .toFile(`./storage/tiles/${uuid}/${zoom}/${faceName}/${i}/${j}.${format}`)
-          .then((data: any) => {
-            console.log(data)
-            return data
-          })
-      }
+
+      await temp.extract({left: j * distance, top: i * distance, width: distance, height: distance })
+        .jpeg({ quality: 60, force: true, mozjpeg: true })
+        .toFile(`./storage/tiles/${uuid}/${zoom}/${faceName}/${i}/${j}.jpg`)
+        .then((data: any) => {
+          return data
+        })
     }
   }
 }
 
 const mergeImagePreview = async(
-  b: File, d: File, f: File, l: File, r: File, u: File, 
+  b: Buffer, d: Buffer, f: Buffer, l: Buffer, r: Buffer, u: Buffer, 
   name: string, uuid: string, maxZoom: number
 ) => {
-  const imageB = await sharp(await b.arrayBuffer())
-  const imageD = await sharp(await d.arrayBuffer())
-  const imageF = await sharp(await f.arrayBuffer())
-  const imageL = await sharp(await l.arrayBuffer())
-  const imageR = await sharp(await r.arrayBuffer())
-  const imageU = await sharp(await u.arrayBuffer())
+  const imageB = await sharp(b)
+  const imageD = await sharp(d)
+  const imageF = await sharp(f)
+  const imageL = await sharp(l)
+  const imageR = await sharp(r)
+  const imageU = await sharp(u)
 
   let metadata = await imageB.metadata()
 
-  let { width = 0, format } = metadata
+  let { width = 0 } = metadata
 
   let imagePreview = imageB.clone()
   imagePreview.resize(width, width*6)
@@ -379,8 +486,6 @@ const mergeImagePreview = async(
   let metadata4 = await imageL.metadata()
   let metadata5 = await imageR.metadata()
   let metadata6 = await imageU.metadata()
-
-  console.log({metadata, metadata2, metadata3, metadata4, metadata5, metadata6})
 
   let imagePreviewBuffer = await imagePreview.composite([
     // { input: await imageB.toBuffer(), left: 0, top: 0 },
@@ -394,22 +499,12 @@ const mergeImagePreview = async(
 
   let imagePreviewSave = sharp(imagePreviewBuffer).resize(Math.round(width/Math.pow(2, maxZoom)), Math.round(width*6 / Math.pow(2, maxZoom)))
 
-  if (!saveInTemp && !existsSync(`./storage/tiles/${uuid}`)) {
+  if (!existsSync(`./storage/tiles/${uuid}`)) {
     mkdirSync(`./storage/tiles/${uuid}`, { recursive: true })
   }
 
-  if (saveInTemp) {
-    await imagePreviewSave.jpeg({ quality: 60, force: true, mozjpeg: true }).toFile(tmpFile(`${uuid}/${name}/preview.${format}`))
-      .then((data: any) => {
-        console.log(data)
-        return data
-      })
-  }
-  else {
-    await imagePreviewSave.jpeg({ quality: 60, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/preview.${format}`)
-      .then((data: any) => {
-        console.log(data)
-        return data
-      })
-  }
+  await imagePreviewSave.jpeg({ quality: 60, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/preview.jpg`)
+    .then((data: any) => {
+      return data
+    })
 }

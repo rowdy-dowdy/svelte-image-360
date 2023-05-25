@@ -15,6 +15,8 @@
   import ModelAddHotspot from "./ModelAddHotspot.svelte";
   import ModelDeleteHotspot from "./ModelDeleteHotspot.svelte";
   import ModelEditHotspot from "./ModelEditHotspot.svelte";
+  import ModelDeleteScene from "./ModelDeleteScene.svelte";
+  import ModelEditScene from "./ModelEditScene.svelte";
 
   export let data: SceneDataType[]
 
@@ -80,6 +82,9 @@
     let scene = scenes.find(v => v?.data.id == sceneId)
     if (scene) {
       switchScene(scene)
+    }
+    else {
+      scenes.length > 0 ? goto('/admin/?scene='+scenes[0].data.id) : goto('/admin/')
     }
   }
 
@@ -279,6 +284,20 @@
     }
     showFormModalEdit = true
   }
+
+  let popupDeleteScene = false
+  let valueDeleteScene: string | null = null
+  const deleteScene = () => {
+    valueDeleteScene = sceneId
+    popupDeleteScene = true
+  }
+
+  let hiddenPopupEditScene = true
+  let valueEditScene: SceneDataType | null = null
+  const editScene = () => {
+    valueEditScene = currentScene
+    hiddenPopupEditScene = false
+  } 
 </script>
 
 <svelte:head>
@@ -295,11 +314,11 @@
 
 <div class="options-bar absolute bottom-0 left-0 right-0 bg-black/60 text-white select-none">
   <div class="absolute left-0 top-0 flex-none flex divide-x divide-transparent">
-    <span class="icon w-10 h-10 p-2 bg-sky-600 cursor-pointer" on:click={toggleAutorotate}>
+    <span class="icon w-10 h-10 p-2 bg-sky-600 cursor-pointer" on:click={editScene}>
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="m18.988 2.012 3 3L19.701 7.3l-3-3zM8 16h3l7.287-7.287-3-3L8 13z"></path><path d="M19 19H8.158c-.026 0-.053.01-.079.01-.033 0-.066-.009-.1-.01H5V5h6.847l2-2H5c-1.103 0-2 .896-2 2v14c0 1.104.897 2 2 2h14a2 2 0 0 0 2-2v-8.668l-2 2V19z"></path></svg>
     </span>
 
-    <span class="icon w-10 h-10 p-2 bg-red-600 cursor-pointer">
+    <span class="icon w-10 h-10 p-2 bg-red-600 cursor-pointer" on:click={deleteScene}>
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M5 20a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8h2V6h-4V4a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2H3v2h2zM9 4h6v2H9zM8 8h9v12H7V8z"></path><path d="M9 10h2v8H9zm4 0h2v8h-2z"></path></svg>
     </span>
     
@@ -390,6 +409,9 @@
 
 <ModelDeleteHotspot bind:popupDeleteHotspot={popupDeleteHotspot} bind:valueDeleteHotspot={valueDeleteHotspot} />
 <ModelEditHotspot bind:scenes={data} bind:valueEditHotspot={valueEditHotspot} bind:showFormModalEdit={showFormModalEdit} />
+
+<ModelDeleteScene bind:popupDelete={popupDeleteScene} bind:valueDelete={valueDeleteScene} />
+<ModelEditScene bind:hidden={hiddenPopupEditScene} bind:data={valueEditScene} />
 
 <style>
   :global(#pano > canvas ~ div) {

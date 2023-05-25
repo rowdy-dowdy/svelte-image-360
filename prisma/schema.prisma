@@ -32,12 +32,14 @@ model VerificationToken {
 }
 
 model Scene {
-  id                    String @id @default(uuid())
+  id                    String  @id @default(uuid())
   url                   String
   name                  String
   levels                String
   faceSize              Int
   initialViewParameters String
+  audio                 String?
+  description           String?
 
   infoHotspots InfoHotspots[]
   linkHotspots LinkHotspots[]
@@ -58,7 +60,7 @@ model InfoHotspots {
 }
 
 model LinkHotspots {
-  id        String  @id @default(uuid())
+  id        String @id @default(uuid())
   yaw       Float
   pitch     Float
   direction String

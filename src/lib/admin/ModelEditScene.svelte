@@ -5,8 +5,23 @@
   import { sineIn } from 'svelte/easing';
   import { invalidateAll } from '$app/navigation';
   import { alertStore } from '../../stores/alert';
+  import type { SceneDataType } from '../../routes/admin/(admin)/+page.server';
 
   export let hidden = true
+  export let data: SceneDataType | null = null
+  let name = ''
+  let description: string = ''
+  let audio: string | null = ''
+
+  $: changeData(data)
+
+  const changeData = (data: SceneDataType | null) => {
+    if (data) {
+      name = data.name
+      description = data.description || ''
+      audio = data.audio
+    }
+  }
 
   let transitionParamsRight = {
     x: 320,
@@ -24,7 +39,7 @@
     let data: FormData = new FormData(e.target as HTMLFormElement)
     // data.append('name', name)
 
-    const response = await fetch("?/split", {
+    const response = await fetch((e.target as HTMLFormElement).action, {
       method: 'POST',
       body: data
     });
@@ -53,7 +68,7 @@
 </script>
 
 <Drawer activateClickOutside={false} class="w-[700px] px-6" placement='right' transitionType="fly" transitionParams={transitionParamsRight} bind:hidden={hidden} id='sidebar6'>
-  <form action="?/addScene" method="post" enctype="multipart/form-data" 
+  <form action="?/updateScene" method="post" enctype="multipart/form-data" 
     class="w-full h-full flex flex-col"
     on:submit|preventDefault={handleSubmit}>
     <div class='flex-none flex items-center'>
@@ -70,50 +85,47 @@
     </div>
     
     <div class="flex-grow min-h-0 py-6 border-y mb-6">
+      <input type="hidden" name="id" value={data?.id}>
       <div class="">
         <Label for="name" class="mb-2">Tiêu đề</Label>
-        <Input type="text" id="name" name="name" placeholder="Vd: Bán đảo Bắc Hà" required />
-      </div>
-      <div class="mt-6">
-        <Label for="image" class="pb-2">Tải lên ảnh</Label>
-        <Fileupload accept="image/*" id="image" class="mb-2" name="image" required />
-        <Helper>PNG, JPG (Tỷ lệ khung hình 2:1).</Helper>
+        <Input type="text" id="name" name="name" placeholder="Vd: Bán đảo Bắc Hà" bind:value={name} required />
       </div>
       <div class="mt-6">
         <Label for="audio" class="pb-2">Âm thanh</Label>
-        <Fileupload accept=".mp3,audio/*" id="audio" class="mb-2" name="audio" />
+        {#if audio}
+          <input type="hidden" name="oldAduio" value="true">
+          <div class="flex mb-4 space-x-4 items-center">
+            <audio controls>
+              <source src="{audio}" type="audio/mpeg">
+            </audio>
+            <span class="icon w-10 h-10 p-2 rounded-full bg-gray-100 hover:bg-gray-200 cursor-pointer"
+              on:click={() => audio = null}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="m16.192 6.344-4.243 4.242-4.242-4.242-1.414 1.414L10.535 12l-4.242 4.242 1.414 1.414 4.242-4.242 4.243 4.242 1.414-1.414L13.364 12l4.242-4.242z"></path></svg>
+            </span>
+          </div>
+        {/if}
+        <Fileupload accept=".mp3,audio/*" id="audio" class="mb-2" name="audio" on:change={() => audio = null} />
         <Helper>MP3, audio.</Helper>
       </div>
       <div class="mt-6">
         <Label for="description" class="mb-2">Nội dung</Label>
-        <Textarea id="description" placeholder="Nội dung" rows="10" name="description" />
+        <Textarea id="description" placeholder="Nội dung" rows="10" name="description" bind:value={description} />
       </div>
     </div>
     
     <div class="!mt-auto flex-none flex justify-end">
       <Button color="none" class="px-12" on:click={() => hidden = true}>Hủy bỏ</Button>
-      <Button type="submit" class="px-12">Tạo mới</Button>
+      <Button type="submit" class="px-12">Chỉnh sửa</Button>
     </div>
   </form>
 
   {#if loading}
     <div class="fixed w-full h-full top-0 left-0"></div>
     <div class="absolute w-full h-full top-0 left-0 bg-white/80 grid place-items-center">
-      <!-- {#if step < 6}
-        <div class="w-full px-6">
-          <div class="flex justify-between mb-1">
-            <span class="text-base font-medium text-blue-700 dark:text-white">Đang chuẩn bị ...</span>
-            <span class="text-sm font-medium text-blue-700 dark:text-white">{getPercent()}%</span>
-          </div>
-          <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-            <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-1000" style="width: {getPercent()}%"></div>
-          </div>
-        </div>
-      {:else} -->
-        <span class="icon w-16 h-16 animate-spin">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M12 22c5.421 0 10-4.579 10-10h-2c0 4.337-3.663 8-8 8s-8-3.663-8-8c0-4.336 3.663-8 8-8V2C6.579 2 2 6.58 2 12c0 5.421 4.579 10 10 10z"></path></svg>
-        </span>
-      <!-- {/if} -->
+      <span class="icon w-16 h-16 animate-spin">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M12 22c5.421 0 10-4.579 10-10h-2c0 4.337-3.663 8-8 8s-8-3.663-8-8c0-4.336 3.663-8 8-8V2C6.579 2 2 6.58 2 12c0 5.421 4.579 10 10 10z"></path></svg>
+      </span>
     </div>
   {/if}
 </Drawer>
