@@ -3,6 +3,7 @@
   export let title: string
   export let image: string = 'https://photo-resize-zmp3.zmdcdn.me/w600_r300x169_jpeg/thumb_video/9/c/9c2cfa5cbfeae42275cad35bc50790e9_1513848418.jpg'
   export let direction: "t" | "tr" | "r" | "br" | "b" | "bl" | "l" | "tl" = "t"
+  // https://cssanimation.rocks/spheres/
 </script>
 
 <div class="absolute top-0 left-0 w-0 h-0 cursor-pointer {$hold ? '!pointer-events-none' : ''}">
