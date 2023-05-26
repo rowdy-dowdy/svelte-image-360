@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import Marzipano from "marzipano";
   import LinkHotspot from "$lib/web/LinkHotspot.svelte";
   import InfoHotSpot from "$lib/web/InfoHotSpot.svelte";
@@ -11,6 +11,8 @@
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
   import { fade } from "svelte/transition";
+  import BarOptions from "./BarOptions.svelte";
+  import LeftSide from "./LeftSide.svelte";
 
   export let data: SceneDataType[]
 
@@ -34,8 +36,7 @@
   })
 
   let currentScene = data[0] 
-  let fullScreen = false
-  let autoRotateCheck = false
+  let autoRotateCheck = true
 
   // web
   $: sceneId = $page.url.searchParams.get('scene')
@@ -159,10 +160,15 @@
   }
 
   function switchScene(scene: SceneType) {
-    // stopAutorotate()
+    let temp = autoRotateCheck
+
+    stopAutorotate()
     scene.view.setParameters(scene.data.initialViewParameters)
     scene.scene.switchTo()
-    // startAutorotate()
+
+    if (temp) {
+      startAutorotate()
+    }
     currentScene = scene.data
   }
 
@@ -176,19 +182,9 @@
     }
   }
 
-  const toggleFullScreen = () => {
-    if (!fullScreen) {
-      document.documentElement.requestFullscreen()
-      fullScreen = true
-    }
-    else {
-      document.exitFullscreen()
-      fullScreen = false
-    }
-  }
-
   onMount(() => {
     hasMount = true
+
     if (!viewerHTML) return
     /// Create viewer.
     viewer = new Marzipano.Viewer(viewerHTML, {
@@ -199,8 +195,8 @@
 
     scenes = data.map(function(data) {
       var urlPrefix = "./tiles"
-      var source = Marzipano.ImageUrlSource.fromString(data.url + "/{z}/{f}/{y}/{x}.jpeg",
-        { cubeMapPreviewUrl: data.url + "/preview.jpeg" })
+      var source = Marzipano.ImageUrlSource.fromString(data.url + "/{z}/{f}/{y}/{x}.jpg",
+        { cubeMapPreviewUrl: data.url + "/preview.jpg" })
       var geometry = new Marzipano.CubeGeometry(data.levels)
 
       var limiter = Marzipano.RectilinearView.limit.traditional(data.faceSize, 100*Math.PI/180, 120*Math.PI/180)
@@ -238,7 +234,7 @@
     else {
       changeScene(sceneId)
     }
-  });
+  })
 
   const panoEventMouseDown = (e: Event) => {
     $hold = true
@@ -246,17 +242,6 @@
 
   const panoEventMouseUp = (e: Event) => {
     $hold = false
-  }
-
-  let showSceneDemo = false
-  let showSceneDemImage = ''
-  const enterSceneTitle = (e: MouseEvent, id: string) => {
-    showSceneDemo = true
-    showSceneDemImage = `./storage/tiles/${id}/demo.jpg`
-  }
-
-  const leaveSceneTitle = (e: MouseEvent) => {
-    // showSceneDemo = false
   }
 </script>
 
@@ -272,55 +257,11 @@
   on:mouseup={panoEventMouseUp}
 />
 
-{#if showSceneDemo}
-  <div transition:fade class="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-black via-transparent to-black/from-black">
-    <div class="w-full h-full grid place-items-center">
-      <img src="{showSceneDemImage}" alt="" class="w-1/2 h-auto">
-    </div>
-  </div>
-{/if}
+<LeftSide data={data} sceneId={sceneId} />
 
-<div class="absolute top-0 left-0 w-full h-full p-6">
-  <div class="flex flex-col mt-[20vh] max-w-[280px] text-white">
-    {#each data as item (item.id)}
-      <div class="flex py-1 space-x-2 items-center cursor-pointer group transition-all duration-[0.4s] origin-left hover:scale-[1.2]"
-        on:mouseenter={(e) => enterSceneTitle(e,item.id)}
-        on:mouseleave={(e) => leaveSceneTitle(e)}
-      >
-        <div class="w-1 h-8 bg-white group-hover:bg-sky-600 {sceneId == item.id ? '!bg-sky-600' : ''}"></div>
-        <span class="group-hover:text-teal-300 text-lg" style="text-shadow: rgb(0, 0, 0) 1px 1px 4px;">{item.name}</span>
-      </div>
-    {/each}
-  </div>
-</div>
+<BarOptions autoRotateCheck={autoRotateCheck} on:toggleAutorotate={toggleAutorotate} currentScene={currentScene} />
 
-<div class="fixed bottom-0 left-0 right-0 bg-black/60 text-white select-none">
-  <div class="text-center p-2">{currentScene?.name}</div>
-
-  <div class="absolute right-0 top-0 flex-none flex divide-x divide-transparent">
-    {#if autoRotateCheck}
-      <span class="icon w-10 h-10 p-2 bg-black cursor-pointer" on:click={toggleAutorotate}>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z"></path><path d="M9 9h6v6H9z"></path></svg>
-      </span>
-    {:else}
-      <span class="icon w-10 h-10 p-2 bg-black cursor-pointer" on:click={toggleAutorotate}>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z"></path><path d="m9 17 8-5-8-5z"></path></svg>
-      </span>
-    {/if}
-
-    {#if !fullScreen}
-      <span class="icon w-10 h-10 p-2 bg-black cursor-pointer" on:click={toggleFullScreen}>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M5 5h5V3H3v7h2zm5 14H5v-5H3v7h7zm11-5h-2v5h-5v2h7zm-2-4h2V3h-7v2h5z"></path></svg>
-      </span>
-    {:else}
-      <span class="icon w-10 h-10 p-2 bg-black cursor-pointer" on:click={toggleFullScreen}>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M10 4H8v4H4v2h6zM8 20h2v-6H4v2h4zm12-6h-6v6h2v-4h4zm0-6h-4V4h-2v6h6z"></path></svg>
-      </span>
-    {/if}
-  </div>
-</div>
-
-<style>
+<style lang="postcss">
   :global(#pano > canvas ~ div) {
     overflow: hidden !important;
   }

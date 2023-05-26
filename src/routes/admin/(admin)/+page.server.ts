@@ -146,7 +146,7 @@ export const actions = {
       }
     
       //save image demo
-      const imageDemo = await sharp(await image.arrayBuffer()).jpeg({ quality: 60, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/demo.jpg`)
+      const imageDemo = await sharp(await image.arrayBuffer()).resize({ width: 1000 }).jpeg({ quality: 60, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/demo.jpg`)
         .then((data: any) => {
           return data
         })
@@ -167,7 +167,7 @@ export const actions = {
             "yaw": 0,
             "fov": 1.5707963267948966
           }`,
-          url: `./storage/tiles/${uuid}`,
+          url: `/storage/tiles/${uuid}`,
           levels: `[
             { "tileSize": ${tileSize/2}, "size": ${tileSize/2}, "fall backOnly": true },
             ${new Array(maxZoom).fill(0).map((v,i) => {
@@ -175,7 +175,7 @@ export const actions = {
             }).toString()}
           ]`,
           description: description,
-          audio: `./storage/tiles/${uuid}/audio.${typeAduio}`
+          audio: `/storage/tiles/${uuid}/audio.${typeAduio}`
         }
       })
 
@@ -193,11 +193,25 @@ export const actions = {
       
       let id = data.get('id') as string
 
-      const scene = await db.scene.delete({
+      const deleteInfoHotspots = db.infoHotspots.deleteMany({
+        where: {
+          sceneId: id
+        }
+      })
+
+      const deleteLinkHotspots = db.linkHotspots.deleteMany({
+        where: {
+          sceneId: id
+        }
+      })
+
+      const deletescene = db.scene.delete({
         where: {
           id: id
         }
       })
+
+      const transaction = await db.$transaction([deleteInfoHotspots, deleteLinkHotspots, deletescene])
 
       // await rmSync(`./storage/tiles/${id}`, { recursive: true })
       await fs.rm(`./storage/tiles/${id}`, { recursive: true })
@@ -307,7 +321,7 @@ export const actions = {
             type: type,
             title: title,
             description: description,
-            image: imageUrl ? `./storage/info-hotspots/${uuid}.${imageUrl.format}` : null
+            image: imageUrl ? `/storage/info-hotspots/${uuid}.${imageUrl.format}` : null
           }
         })
       }
@@ -405,7 +419,7 @@ export const actions = {
             type: type,
             title: title,
             description: description,
-            image: imageUrl ? `./storage/info-hotspots/${uuid}.${imageUrl.format}` : null
+            image: imageUrl ? `/storage/info-hotspots/${uuid}.${imageUrl.format}` : null
           }
         })
       }
@@ -467,12 +481,12 @@ const mergeImagePreview = async(
   b: Buffer, d: Buffer, f: Buffer, l: Buffer, r: Buffer, u: Buffer, 
   name: string, uuid: string, maxZoom: number
 ) => {
-  const imageB = await sharp(b)
-  const imageD = await sharp(d)
-  const imageF = await sharp(f)
-  const imageL = await sharp(l)
-  const imageR = await sharp(r)
-  const imageU = await sharp(u)
+  const imageB = sharp(b)
+  const imageD = sharp(d)
+  const imageF = sharp(f)
+  const imageL = sharp(l)
+  const imageR = sharp(r)
+  const imageU = sharp(u)
 
   let metadata = await imageB.metadata()
 
@@ -481,14 +495,17 @@ const mergeImagePreview = async(
   let imagePreview = imageB.clone()
   imagePreview.resize(width, width*6)
 
-  let metadata2 = await imageD.metadata()
-  let metadata3 = await imageF.metadata()
-  let metadata4 = await imageL.metadata()
-  let metadata5 = await imageR.metadata()
-  let metadata6 = await imageU.metadata()
+  // let imagePreview = sharp({
+  //   create: {
+  //     width: width,
+  //     height: width * 6,
+  //     channels: 4,
+  //     background: { r: 255, g: 255, b: 255, alpha: 1 }
+  //   }
+  // })
 
   let imagePreviewBuffer = await imagePreview.composite([
-    // { input: await imageB.toBuffer(), left: 0, top: 0 },
+    { input: await imageB.toBuffer(), left: 0, top: 0 },
     { input: await imageD.rotate(180).toBuffer(), left: 0, top: width },
     { input: await imageF.toBuffer(), left: 0, top: width * 2 },
     { input: await imageL.toBuffer(), left: 0, top: width * 3 },

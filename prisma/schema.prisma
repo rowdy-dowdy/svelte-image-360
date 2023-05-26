@@ -65,6 +65,7 @@ model LinkHotspots {
   pitch     Float
   direction String
   target    String
+  type      String?
 
   sceneId String
   scene   Scene  @relation(fields: [sceneId], references: [id])

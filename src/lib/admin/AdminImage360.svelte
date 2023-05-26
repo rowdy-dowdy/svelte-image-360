@@ -33,8 +33,8 @@
 
   $: scenes = viewer ? data.map(function(data) {
     var urlPrefix = "./tiles"
-    var source = Marzipano.ImageUrlSource.fromString(data.url + "/{z}/{f}/{y}/{x}.jpeg",
-      { cubeMapPreviewUrl: data.url + "/preview.jpeg" })
+    var source = Marzipano.ImageUrlSource.fromString(data.url + "/{z}/{f}/{y}/{x}.jpg",
+      { cubeMapPreviewUrl: data.url + "/preview.jpg" })
     var geometry = new Marzipano.CubeGeometry(data.levels)
 
     var limiter = Marzipano.RectilinearView.limit.traditional(data.faceSize, 100*Math.PI/180, 120*Math.PI/180)

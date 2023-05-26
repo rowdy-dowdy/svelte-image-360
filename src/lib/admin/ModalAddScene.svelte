@@ -24,7 +24,7 @@
     let data: FormData = new FormData(e.target as HTMLFormElement)
     // data.append('name', name)
 
-    const response = await fetch("?/split", {
+    const response = await fetch((e.target as HTMLFormElement).action, {
       method: 'POST',
       body: data
     });
@@ -54,7 +54,7 @@
 
 <Drawer activateClickOutside={false} class="w-[700px] px-6" placement='right' transitionType="fly" transitionParams={transitionParamsRight} bind:hidden={hidden} id='sidebar6'>
   <form action="?/addScene" method="post" enctype="multipart/form-data" 
-    class="w-full h-full flex flex-col"
+    class="w-full h-full flex flex-col {loading ? 'overflow-hidden' : ''}"
     on:submit|preventDefault={handleSubmit}>
     <div class='flex-none flex items-center'>
       <h5
@@ -97,23 +97,11 @@
   </form>
 
   {#if loading}
-    <div class="fixed w-full h-full top-0 left-0"></div>
+    <!-- <div class="fixed w-full h-full top-0 left-0"></div> -->
     <div class="absolute w-full h-full top-0 left-0 bg-white/80 grid place-items-center">
-      <!-- {#if step < 6}
-        <div class="w-full px-6">
-          <div class="flex justify-between mb-1">
-            <span class="text-base font-medium text-blue-700 dark:text-white">Đang chuẩn bị ...</span>
-            <span class="text-sm font-medium text-blue-700 dark:text-white">{getPercent()}%</span>
-          </div>
-          <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-            <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-1000" style="width: {getPercent()}%"></div>
-          </div>
-        </div>
-      {:else} -->
-        <span class="icon w-16 h-16 animate-spin">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M12 22c5.421 0 10-4.579 10-10h-2c0 4.337-3.663 8-8 8s-8-3.663-8-8c0-4.336 3.663-8 8-8V2C6.579 2 2 6.58 2 12c0 5.421 4.579 10 10 10z"></path></svg>
-        </span>
-      <!-- {/if} -->
+      <span class="icon w-16 h-16 animate-spin">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M12 22c5.421 0 10-4.579 10-10h-2c0 4.337-3.663 8-8 8s-8-3.663-8-8c0-4.336 3.663-8 8-8V2C6.579 2 2 6.58 2 12c0 5.421 4.579 10 10 10z"></path></svg>
+      </span>
     </div>
   {/if}
 </Drawer>
