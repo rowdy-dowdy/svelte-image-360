@@ -7,7 +7,6 @@ import sharp from "sharp"
 import AdmZip from "adm-zip"
 import {tmpdir, type} from 'os'
 import path from 'path'
-import { SAVE_TEMP } from '$env/static/private'
 import db from '$lib/server/prismadb.js'
 import type { InfoHotspots, LinkHotspots, Scene } from '@prisma/client'
 import { v4 } from 'uuid';
