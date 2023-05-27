@@ -13,6 +13,8 @@
   import { fade } from "svelte/transition";
   import BarOptions from "./BarOptions.svelte";
   import LeftSide from "./LeftSide.svelte";
+  import LinkHotspot2 from "./LinkHotspot2.svelte";
+  import LinkHotspot3 from "./LinkHotspot3.svelte";
 
   export let data: SceneDataType[]
 
@@ -70,13 +72,32 @@
 
   function createLinkHotspotElement(hotspot: LinkHotspots) {
     var wrapper = document.createElement('div')
-		let toolbarComponent = new LinkHotspot({
+    
+		if (hotspot?.type == "2") {
+      let toolbarComponent = new LinkHotspot2({
+        target: wrapper,
+        props: {
+          title: findSceneDataById(hotspot.target)?.name || ""
+        }
+      })
+    }
+    else if (hotspot?.type == "3") {
+      let toolbarComponent = new LinkHotspot3({
 			target: wrapper,
-			props: {
-        title: findSceneDataById(hotspot.target)?.name || "",
-        direction: hotspot.direction as any
-      }
-		});
+        props: {
+          title: findSceneDataById(hotspot.target)?.name || ""
+        }
+      })
+    }
+    else {
+      let toolbarComponent = new LinkHotspot({
+			target: wrapper,
+        props: {
+          title: findSceneDataById(hotspot.target)?.name || "",
+          image: `/storage/tiles/${hotspot.target}/demo.jpg`
+        }
+      })
+    }
 
 		// toolbarComponent.$on('click-eye', ({ detail }) => eye = detail);
 		// toolbarComponent.$on('click-lines', ({ detail }) => lines = detail);
@@ -86,7 +107,7 @@
 
     // Add click event handler.
     wrapper.addEventListener('click', function() {
-      goto('/admin/?scene='+hotspot.target)
+      goto('/?scene='+hotspot.target)
     });
     
     stopTouchAndScrollEventPropagation(wrapper);
@@ -97,30 +118,12 @@
   function createInfoHotspotElement(hotspot: InfoHotspots) {
     var wrapper = document.createElement('div')
 
-    if (hotspot?.type == "2") {
-      let toolbarComponent = new InfoHotSpot2({
-        target: wrapper,
-        props: {
-          title: hotspot?.title || "",
-          description: hotspot?.description || ""
-        }
-      })
-    }
-    else if (hotspot?.type == "video") {
-      let toolbarComponent = new InfoHotSpotVideo({
-        target: wrapper,
-        props: {}
-      })
-    }
-    else {
-      let toolbarComponent = new InfoHotSpot({
-        target: wrapper,
-        props: {
-          title: hotspot?.title || "",
-          description: hotspot?.description || ""
-        }
-      })
-    }
+    let toolbarComponent = new InfoHotSpot({
+      target: wrapper,
+      props: {
+        title: hotspot?.title || ""
+      }
+    })
 
     stopTouchAndScrollEventPropagation(wrapper)
 

@@ -54,7 +54,7 @@
 
 <Drawer activateClickOutside={false} class="w-[700px] px-6" placement='right' transitionType="fly" transitionParams={transitionParamsRight} bind:hidden={hidden} id='sidebar6'>
   <form action="?/addScene" method="post" enctype="multipart/form-data" 
-    class="w-full h-full flex flex-col {loading ? 'overflow-hidden' : ''}"
+    class="w-full min-h-full flex flex-col {loading ? 'overflow-hidden' : ''}"
     on:submit|preventDefault={handleSubmit}>
     <div class='flex-none flex items-center'>
       <h5

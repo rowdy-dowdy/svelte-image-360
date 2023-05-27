@@ -40,6 +40,7 @@ model Scene {
   initialViewParameters String
   audio                 String?
   description           String?
+  sort Int?
 
   infoHotspots InfoHotspots[]
   linkHotspots LinkHotspots[]
@@ -63,7 +64,7 @@ model LinkHotspots {
   id        String @id @default(uuid())
   yaw       Float
   pitch     Float
-  direction String
+  direction String?
   target    String
   type      String?
 

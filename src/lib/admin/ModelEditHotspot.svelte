@@ -76,6 +76,14 @@
 
   $: getNameScene = scenes.find(v => v.id == target)?.name || "Chưa chọn"
 
+  let typesLink = [
+    { value: '1', name: 'Cơ bản' },
+    { value: '2', name: 'Trên cao' },
+    { value: '3', name: 'Mặt đất' },
+  ]
+
+  let selectTypesLink = typesLink[0].value
+
   // info
   let types = [
     { value: '1', name: 'Loại 1' },
@@ -95,7 +103,8 @@
   $: if (valueEditHotspot) {
     if (valueEditHotspot.type == "link") {
       target = (valueEditHotspot.value as LinkHotspots).target
-      selectedDirection = (valueEditHotspot.value as LinkHotspots).direction
+      // selectedDirection = (valueEditHotspot.value as LinkHotspots).direction
+      selectTypesLink = (valueEditHotspot.value as LinkHotspots).type || selectTypesLink
     }
     else {
       selectTypes = (valueEditHotspot.value as InfoHotspots).type || ''
@@ -146,9 +155,15 @@
           </Label>
 
           <Label
+            >Loại
+            <Select name="type" class="mt-2" items={typesLink} bind:value={selectTypesLink} />
+          </Label>
+
+
+          <!-- <Label
             >Hướng
             <Select name="direction" class="mt-2" items={directions} bind:value={selectedDirection} />
-          </Label>
+          </Label> -->
 
           <Button type="submit">
             {#if loading}
@@ -162,21 +177,18 @@
     {:else}
       <div>
         <input type="hidden" value="info" name="hotspotType">
-        <div class="flex flex-col space-y-6">
-          <!-- <FloatingLabelInput
-            style="filled"
-            disabled
-            type="text"
-            value={JSON.stringify(coordinatesAdd)}
-            label="Tọa độ"
-          /> -->
+        <div class="flex flex-col gap-4">
+          <div>
+            <Label for="title" class="mb-2">Tiêu đề</Label>
+            <Input type="text" id="tile" name="title" placeholder="Tiêu đề" bind:value={title} required />
+          </div>
 
-          <Label
+          <!-- <Label
             >Loại
             <Select name="type" class="mt-2" items={types} bind:value={selectTypes} />
-          </Label>
+          </Label> -->
 
-          {#if selectTypes == "1"}
+          <!-- {#if selectTypes == "1"}
             <div>
               <Label for="title" class="mb-2">Tiêu đề</Label>
               <Input type="text" id="tile" name="title" placeholder="Tiêu đề" bind:value={title} required />
@@ -195,13 +207,13 @@
               <Fileupload id="image" name="image" class="mb-2" on:change={(e) => onChangeImage(e)} />
               <Helper>PNG, JPG or GIF.</Helper>
             </div>
-          {/if}
+          {/if} -->
 
           <Button type="submit">
             {#if loading}
               <Spinner class="mr-3" size="4" />Đang lưu ...
             {:else}
-              <span>Thêm mới</span>
+              <span>Chỉnh sửa</span>
             {/if}
           </Button>
         </div>

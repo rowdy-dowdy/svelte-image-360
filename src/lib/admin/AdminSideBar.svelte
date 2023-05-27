@@ -37,9 +37,9 @@
         <img src="{user.image}" alt="logo" class="w-full h-full object-contain">
       </div>
       <Dropdown placement="top-start" triggeredBy="#userImage">
-        <DropdownItem>Bảng điều khiển</DropdownItem>
-        <DropdownItem>Nhật ký</DropdownItem>
-        <DropdownItem>Cài đặt</DropdownItem>
+        <DropdownItem href="/admin">Bảng điều khiển</DropdownItem>
+        <DropdownItem href="/admin/logs">Nhật ký</DropdownItem>
+        <DropdownItem href="/admin/settings">Cài đặt</DropdownItem>
         <DropdownItem slot="footer"
           on:click={logout}
         >Đăng xuất</DropdownItem>

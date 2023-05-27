@@ -6,6 +6,9 @@ export const load = async () => {
     include: {
       infoHotspots: true,
       linkHotspots: true
+    },
+    orderBy: {
+      sort: 'asc'
     }
   })
 

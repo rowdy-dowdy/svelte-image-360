@@ -18,13 +18,6 @@ function tmpFile(p: string) {
   return path.join(tmpdir(),p)
 }
 
-const compress = {
-  'png': {compressionLevel: 8, quality: 60},
-  'jpeg': { quality: 60 },
-  'webp': { quality: 60 },
-  'gif': { }
-}
-
 const facePositions = {
   pz: {x: 1, y: 1, name: 'b'},
   nz: {x: 3, y: 1, name: 'f'},
@@ -58,6 +51,9 @@ export const load = async () => {
     include: {
       infoHotspots: true,
       linkHotspots: true
+    },
+    orderBy: {
+      sort: 'asc'
     }
   })
 
@@ -146,7 +142,7 @@ export const actions = {
       }
     
       //save image demo
-      const imageDemo = await sharp(await image.arrayBuffer()).resize({ width: 1000 }).jpeg({ quality: 60, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/demo.jpg`)
+      const imageDemo = await sharp(await image.arrayBuffer()).resize({ width: 1000 }).jpeg({ quality: 80, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/demo.jpg`)
         .then((data: any) => {
           return data
         })
@@ -266,6 +262,33 @@ export const actions = {
     }
   },
 
+  sortScene: async ({ cookies, request, url }) => {
+    try {
+      const data = await request.formData()
+      
+      let list = JSON.parse(data.get('list') as string) as string[]
+
+      let scenesUpdate = list.map((v,i) => {
+        return db.scene.update({
+          where: {
+            id: v
+          },
+          data: {
+            sort: i
+          }
+        })
+      })
+
+      const transaction = await db.$transaction(scenesUpdate)
+
+      return { success: true }
+    } 
+    catch (error) {
+      console.log({error})
+      return fail(400, { error: `Đã có lỗi xảy ra vui lòng thử lại sau` })
+    }
+  },
+
   createHotspot: async ({ cookies, request, url }) => {
     try {
       const data = await request.formData()
@@ -288,7 +311,8 @@ export const actions = {
             yaw: +yaw,
             pitch: +pitch,
             direction: direction,
-            target: target
+            target: target,
+            type: type
           }
         })
       }
@@ -386,7 +410,8 @@ export const actions = {
           },
           data: {
             direction: direction,
-            target: target
+            target: target,
+            type: type
           }
         })
       }
@@ -468,7 +493,7 @@ const slipImageFace = async (
       let temp = image.clone()
 
       await temp.extract({left: j * distance, top: i * distance, width: distance, height: distance })
-        .jpeg({ quality: 60, force: true, mozjpeg: true })
+        .jpeg({ quality: 80, force: true, mozjpeg: true })
         .toFile(`./storage/tiles/${uuid}/${zoom}/${faceName}/${i}/${j}.jpg`)
         .then((data: any) => {
           return data
@@ -520,7 +545,7 @@ const mergeImagePreview = async(
     mkdirSync(`./storage/tiles/${uuid}`, { recursive: true })
   }
 
-  await imagePreviewSave.jpeg({ quality: 60, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/preview.jpg`)
+  await imagePreviewSave.jpeg({ quality: 80, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/preview.jpg`)
     .then((data: any) => {
       return data
     })

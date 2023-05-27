@@ -9,9 +9,3 @@
   autoplay
   loop
 />
-
-<style lang="postcss">
-  lottie-player {
-    @apply pointer-events-auto;
-  }
-</style>
