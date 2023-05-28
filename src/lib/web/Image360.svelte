@@ -15,6 +15,7 @@
   import LeftSide from "./LeftSide.svelte";
   import LinkHotspot2 from "./LinkHotspot2.svelte";
   import LinkHotspot3 from "./LinkHotspot3.svelte";
+  import { mobileCheck } from "./map.js";
 
   export let data: SceneDataType[]
 
@@ -41,17 +42,19 @@
   let autoRotateCheck = true
 
   // web
-  $: sceneId = $page.url.searchParams.get('scene')
-  $: changeScene(sceneId)
+  $: sceneSlug = $page.params.slug
+  $: changeScene(sceneSlug)
 
-  const changeScene = (sceneId: string | null) => {
+  $: console.log($page.params)
+
+  const changeScene = (sceneSlug: string | null) => {
     if (!hasMount) return
-    let scene = scenes.find(v => v?.data.id == sceneId)
+    let scene = scenes.find(v => v?.data.slug == sceneSlug)
     if (scene) {
       switchScene(scene)
     }
     else {
-      scenes.length > 0 ? goto('/?scene='+scenes[0].data.id) : goto('/')
+      scenes.length > 0 ? goto(`/${scenes[0].data.slug}`) : goto('/')
     }
   }
 
@@ -198,11 +201,14 @@
 
     scenes = data.map(function(data) {
       var urlPrefix = "./tiles"
-      var source = Marzipano.ImageUrlSource.fromString(data.url + "/{z}/{f}/{y}/{x}.jpg",
-        { cubeMapPreviewUrl: data.url + "/preview.jpg" })
-      var geometry = new Marzipano.CubeGeometry(data.levels)
+      var source = mobileCheck() 
+        ? Marzipano.ImageUrlSource.fromString(data.url + "/mobile/{f}.jpg")
+        : Marzipano.ImageUrlSource.fromString(data.url + "/{z}/{f}/{y}/{x}.jpg", { cubeMapPreviewUrl: data.url + "/preview.jpg" })
+      var geometry = mobileCheck() 
+        ? new Marzipano.CubeGeometry([{ tileSize: data.faceSize / 2, size: data.faceSize / 2 }])
+        : new Marzipano.CubeGeometry(data.levels)
 
-      var limiter = Marzipano.RectilinearView.limit.traditional(data.faceSize, 100*Math.PI/180, 120*Math.PI/180)
+      var limiter = Marzipano.RectilinearView.limit.traditional(mobileCheck() ? data.faceSize / 2 : data.faceSize, 100*Math.PI/180, 120*Math.PI/180)
       var view = new Marzipano.RectilinearView(data.initialViewParameters, limiter)
 
       var scene = viewer!.createScene({
@@ -231,11 +237,11 @@
       }
     })
 
-    if (!sceneId) {
-      goto('/?scene='+scenes[0].data.id)
+    if (!sceneSlug) {
+      goto(`/${scenes[0].data.slug}`)
     }
     else {
-      changeScene(sceneId)
+      changeScene(sceneSlug)
     }
   })
 
@@ -249,8 +255,6 @@
 </script>
 
 <svelte:head>
-  <title>Bắc Hà thăm quan | Live 360</title>
-  <meta name="description" content="A sample 360° tour created by the VietHungIt.">
   <meta name="viewport" content="target-densitydpi=device-dpi, width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, minimal-ui">
   <style> @-ms-viewport { width: device-width; } </style>
 </svelte:head>
@@ -260,7 +264,7 @@
   on:mouseup={panoEventMouseUp}
 />
 
-<LeftSide data={data} sceneId={sceneId} />
+<LeftSide data={data} sceneSlug={sceneSlug} />
 
 <BarOptions autoRotateCheck={autoRotateCheck} on:toggleAutorotate={toggleAutorotate} currentScene={currentScene} />
 

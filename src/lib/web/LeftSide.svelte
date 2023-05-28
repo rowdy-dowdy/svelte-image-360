@@ -5,7 +5,7 @@
   import { showListScene } from "../../stores/pano";
 
   export let data: SceneDataType[]
-  export let sceneId: string | null
+  export let sceneSlug: string | null
 
   let showSceneDemo = false
   let showSceneDemImage = ''
@@ -19,7 +19,7 @@
   }
 
   const clickSceneTitle = (id: string) => {
-    goto('/?scene='+id)
+    goto(`/${id}`)
     showSceneDemo = false
   }
 </script>
@@ -35,7 +35,7 @@
 {/if}
 
 <div class="absolute top-0 left-0 w-full h-full p-6 pointer-events-none overflow-hidden">
-  <div class="pl-12">
+  <div class="md:pl-6 lg:pl-12">
     <div class="w-32 h-32">
       <img src="/logo.png" alt="logo Bắc Hà" class="w-full h-full object-contain">
     </div>
@@ -48,9 +48,9 @@
       {#each data as item (item.id)}
         <div class="flex py-1 space-x-2 items-center cursor-pointer group transition-all duration-[0.4s] origin-left hover:scale-[1.2] pointer-events-auto"
           on:mouseenter={(e) => enterSceneTitle(e,item.id)}
-          on:click={() => clickSceneTitle(item.id)}
+          on:click={() => clickSceneTitle(item.slug)}
         >
-          <div class="w-1 h-8 bg-white group-hover:bg-sky-600 {sceneId == item.id ? '!bg-sky-600' : ''}"></div>
+          <div class="w-1 h-8 bg-white group-hover:bg-sky-600 {sceneSlug == item.slug ? '!bg-sky-600' : ''}"></div>
           <span class="group-hover:text-teal-300 text-lg" style="text-shadow: rgb(0, 0, 0) 1px 1px 4px;">{item.name}</span>
         </div>
       {/each}

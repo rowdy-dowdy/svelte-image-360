@@ -9,6 +9,7 @@
 	import { onMount } from "svelte";
   import { applyAction, enhance } from "$app/forms";
   import { alertStore } from "../../../stores/alert.js";
+  import { Scene } from "marzipano";
 
   export let data
 
@@ -150,4 +151,4 @@
   </div>
 </div>
 
-<ModalAddScene bind:hidden={hiddenAddModal} />
+<ModalAddScene bind:hidden={hiddenAddModal} bind:scenes={data.scenes} />

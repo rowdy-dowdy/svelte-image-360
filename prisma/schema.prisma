@@ -34,6 +34,7 @@ model VerificationToken {
 model Scene {
   id                    String  @id @default(uuid())
   url                   String
+  slug                  String @unique
   name                  String
   levels                String
   faceSize              Int

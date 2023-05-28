@@ -5,14 +5,27 @@
   import { sineIn } from 'svelte/easing';
   import { invalidateAll } from '$app/navigation';
   import { alertStore } from '../../stores/alert';
+  import slugify from "slugify";
+  import type { SceneDataType } from '../../routes/admin/(admin)/+page.server';
 
   export let hidden = true
+  export let scenes: SceneDataType[]
 
   let transitionParamsRight = {
     x: 320,
     duration: 300,
     easing: sineIn
   }
+
+  let name = ''
+  $: slug = slugify(name, {
+    replacement: '_',  // replace spaces with replacement character, defaults to `-`
+    remove: undefined, // remove characters that match regex, defaults to `undefined`
+    lower: true,      // convert to lower case, defaults to `false`
+    strict: false,     // strip special characters except replacement, defaults to `false`
+    locale: 'vi',      // language code of the locale to use
+    trim: true         // trim leading and trailing replacement chars, defaults to `true`
+  })
 
   let loading = false
 
@@ -70,9 +83,14 @@
     </div>
     
     <div class="flex-grow min-h-0 py-6 border-y mb-6">
+      <input type="hidden" name="sort" value={scenes.length}>
       <div class="">
         <Label for="name" class="mb-2">Tiêu đề</Label>
-        <Input type="text" id="name" name="name" placeholder="Vd: Bán đảo Bắc Hà" required />
+        <Input type="text" id="name" name="name" placeholder="Vd: Bán đảo Bắc Hà" required bind:value={name} />
+      </div>
+      <div class="mt-6">
+        <Label for="slug" class="mb-2">Slug</Label>
+        <Input type="text" id="slug" name="slug" required bind:value={slug} />
       </div>
       <div class="mt-6">
         <Label for="image" class="pb-2">Tải lên ảnh</Label>

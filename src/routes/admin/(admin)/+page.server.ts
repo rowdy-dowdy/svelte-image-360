@@ -72,6 +72,8 @@ export const actions = {
     try {
       const data = await request.formData()
       let name = data.get('name') as string,
+        slug = data.get('slug') as string,
+        sort = data.get('sort') as string,
         image = data.get('image') as File,
         audio = data.get('audio') as File,
         description = data.get('description') as string
@@ -135,6 +137,7 @@ export const actions = {
         ])
       }
       await mergeImagePreview(b,d,f,l,r,u,name,uuid, maxZoom)
+      await saveImageMobile(b,d,f,l,r,u,uuid)
 
       if (!existsSync(`./storage/tiles/${uuid}`)) {
         mkdirSync(`./storage/tiles/${uuid}`, { recursive: true })
@@ -147,8 +150,12 @@ export const actions = {
         })
 
       // save audio file
-      let typeAduio = audio.type.split('/')[1]
-      await fs.writeFile(`./storage/tiles/${uuid}/audio.${typeAduio}`, audio.stream() as any)
+      let audioUrl = null
+      if (audio && audio.size > 0) {
+        let typeAduio = audio.type.split('/')[1]
+        await fs.writeFile(`./storage/tiles/${uuid}/audio.${typeAduio}`, audio.stream() as any)
+        audioUrl = `./storage/tiles/${uuid}/audio.${typeAduio}`
+      }
 
       let tileSize = width / Math.pow(2,(maxZoom - 1))
 
@@ -156,6 +163,7 @@ export const actions = {
         data: {
           id: uuid,
           name: name,
+          slug: slug,
           faceSize: width * 2,
           initialViewParameters: `{
             "pitch": 0,
@@ -170,7 +178,8 @@ export const actions = {
             }).toString()}
           ]`,
           description: description,
-          audio: `/storage/tiles/${uuid}/audio.${typeAduio}`
+          audio: audioUrl,
+          sort: +sort
         }
       })
 
@@ -223,6 +232,7 @@ export const actions = {
     try {
       const data = await request.formData()
       let name = data.get('name') as string,
+        slug = data.get('slug') as string,
         audio = data.get('audio') as File,
         oldAduio = data.get('oldAduio') as string,
         id = data.get('id') as string,
@@ -231,7 +241,6 @@ export const actions = {
       // save audio file
       let audioUrl = null
       if (audio && audio.size > 0) {
-        console.log({audio})
         let typeAduio = audio.type.split('/')[1]
         await fs.writeFile(`./storage/tiles/${id}/audio.${typeAduio}`, audio.stream() as any)
         audioUrl = `./storage/tiles/${id}/audio.${typeAduio}`
@@ -240,6 +249,7 @@ export const actions = {
       let dataUpdate: any = {
         name: name,
         description: description,
+        slug: slug
       }
 
       if (!oldAduio) {
@@ -548,4 +558,36 @@ const mergeImagePreview = async(
     .then((data: any) => {
       return data
     })
+}
+
+const saveImageMobile = async(
+  b: Buffer, d: Buffer, f: Buffer, l: Buffer, r: Buffer, u: Buffer, 
+  uuid: string
+) => {
+  const imageB = sharp(b)
+  const imageD = sharp(d)
+  const imageF = sharp(f)
+  const imageL = sharp(l)
+  const imageR = sharp(r)
+  const imageU = sharp(u)
+
+  let metadata = await imageB.metadata()
+
+  let { width = 0, height = 0 } = metadata
+
+  if (!existsSync(`./storage/tiles/${uuid}/mobile`)) {
+    mkdirSync(`./storage/tiles/${uuid}/mobile`, { recursive: true })
+  }
+
+  let w = Math.round(width / 2)
+
+  await Promise.all([
+    imageB.resize(w, w).jpeg({ quality: 80, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/mobile/b.jpg`).then((data: any) => { return data }),
+    imageD.resize(w, w).jpeg({ quality: 80, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/mobile/d.jpg`).then((data: any) => { return data }),
+    imageF.resize(w, w).jpeg({ quality: 80, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/mobile/f.jpg`).then((data: any) => { return data }),
+    imageL.resize(w, w).jpeg({ quality: 80, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/mobile/l.jpg`).then((data: any) => { return data }),
+    imageR.resize(w, w).jpeg({ quality: 80, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/mobile/r.jpg`).then((data: any) => { return data }),
+    imageU.resize(w, w).jpeg({ quality: 80, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/mobile/u.jpg`).then((data: any) => { return data }),
+  ])
+
 }
