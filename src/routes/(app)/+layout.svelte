@@ -48,3 +48,9 @@
 {/if}
 
 <slot />
+
+<style>
+  :global(html, body) {
+    @apply w-full h-full overflow-hidden;
+  }
+</style>
