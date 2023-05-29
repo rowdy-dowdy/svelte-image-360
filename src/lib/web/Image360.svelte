@@ -45,8 +45,6 @@
   $: sceneSlug = $page.params.slug
   $: changeScene(sceneSlug)
 
-  $: console.log($page.params)
-
   const changeScene = (sceneSlug: string | null) => {
     if (!hasMount) return
     let scene = scenes.find(v => v?.data.slug == sceneSlug)
@@ -110,7 +108,8 @@
 
     // Add click event handler.
     wrapper.addEventListener('click', function() {
-      goto('/?scene='+hotspot.target)
+      let scene = scenes.find(v => v.data.id == hotspot.target)
+      goto(`/${scene?.data.slug}`)
     });
     
     stopTouchAndScrollEventPropagation(wrapper);

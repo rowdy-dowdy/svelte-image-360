@@ -152,7 +152,7 @@ export const actions = {
       // save audio file
       let audioUrl = null
       if (audio && audio.size > 0) {
-        let typeAduio = audio.type.split('/')[1]
+        let typeAduio = path.extname(audio.name)
         await fs.writeFile(`./storage/tiles/${uuid}/audio.${typeAduio}`, audio.stream() as any)
         audioUrl = `./storage/tiles/${uuid}/audio.${typeAduio}`
       }
@@ -241,7 +241,7 @@ export const actions = {
       // save audio file
       let audioUrl = null
       if (audio && audio.size > 0) {
-        let typeAduio = audio.type.split('/')[1]
+        let typeAduio = path.extname(audio.name)
         await fs.writeFile(`./storage/tiles/${id}/audio.${typeAduio}`, audio.stream() as any)
         audioUrl = `./storage/tiles/${id}/audio.${typeAduio}`
       }
