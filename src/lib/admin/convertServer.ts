@@ -360,41 +360,30 @@ export async function convertEquirectangularToCubeMap2(equirectangularImageBuffe
   // loadImageFromBuffer
   // Create a buffer for the cube map
   // const cubeMapBuffer = Buffer.alloc(faceWidth * faceHeight * 4 * 6);
-  console.log(faceWidth, faceHeight)
-  const cubeMapBuffer = await sharp({
-    create: {
-      width: 5,
-      height: 5,
-      channels: 4,
-      background: { r: 0, g: 0, b: 0, alpha: 1 },
-    },
-  }).png().toBuffer()
+  // console.log(faceWidth, faceHeight)
+  // const cubeMapBuffer = await sharp({
+  //   create: {
+  //     width: 5,
+  //     height: 5,
+  //     channels: 4,
+  //     background: { r: 0, g: 0, b: 0, alpha: 1 },
+  //   },
+  // }).png().toBuffer()
 
-  // cubeMapBuffer.ensureAlpha()
-  // // cubeMapBuffer.raw()
+  const input = Uint8Array.from([255, 255, 255, 0, 0, 0]);
+  const cubeMapBuffer = await sharp(input, {
+    // because the input does not contain its dimensions or how many channels it has
+    // we need to specify it in the constructor options
+    raw: {
+      width: 2,
+      height: 1,
+      channels: 3
+    }
+  });
 
-  // const { data, info } = await cubeMapBuffer.toBuffer({ resolveWithObject: true });
+  await cubeMapBuffer.toFile('./storage/my-two-pixels.png');
 
-  // console.log(data.toJSON())
-
-  const pixelIndex = (1 * 5 + 1) * 4;
-
-  // Thay đổi giá trị RGB(A) của pixel
-  cubeMapBuffer[pixelIndex] = 255;
-  cubeMapBuffer[pixelIndex + 1] = 255;
-  cubeMapBuffer[pixelIndex + 2] = 255;
-  cubeMapBuffer[pixelIndex + 3] = 255;
-
-  // console.log(data.toJSON())
-
-  // cubeMapBuffer.fill(255);
-
-  // cubeMapBuffer[0] = 136
-  // cubeMapBuffer[1] = 80
-  // cubeMapBuffer[2] = 78
-  // cubeMapBuffer[3] = 71
-
-  return cubeMapBuffer
+  return await cubeMapBuffer.png().toBuffer()
 
   console.log(equirectangularWidth, equirectangularHeight)
 

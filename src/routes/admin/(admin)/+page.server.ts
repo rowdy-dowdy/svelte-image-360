@@ -94,11 +94,11 @@ export const actions = {
 
       console.log((cubeMapBuffer as Buffer).toJSON())
 
-      // await sharp(cubeMapBuffer).toFile(`./storage/test.png`)
-      // .then((data: any) => {
-      //   return data
-      // })
-      await fs.writeFile('./storage/test.png', cubeMapBuffer);
+      await sharp(cubeMapBuffer as Buffer).toFile(`./storage/test.png`)
+      .then((data: any) => {
+        return data
+      })
+      // await fs.writeFile('./storage/test.png', cubeMapBuffer);
 
       const end = process.hrtime(start);
       const executionTime = (end[0] * 1000) + (end[1] / 1000000);
