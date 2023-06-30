@@ -1,4 +1,5 @@
 import { ImageData, createCanvas } from "canvas";
+import sharp from "sharp";
 
 function clamp(x: number, min: number, max: number) {
   return Math.min(max, Math.max(x, min));
@@ -252,4 +253,272 @@ export function getDataURL(imgData: ImageData) {
   ctx?.putImageData(imgData, 0, 0)
   // return canvas.toDataURL('image/jpeg', 0.92)
   return canvas.toBuffer()
+}
+
+export function convertEquirectangularToCubeMap(equirectangularImage: ImageData) {
+  const equirectangularWidth = equirectangularImage.width;
+  const equirectangularHeight = equirectangularImage.height;
+
+  // Calculate dimensions for each face
+  const faceWidth = equirectangularWidth / 6;
+  const faceHeight = faceWidth / 2;
+
+  // Create a canvas element for the cube map
+  // const cubeMapCanvas = document.createElement('canvas');
+  // cubeMapCanvas.width = faceWidth * 4;
+  // cubeMapCanvas.height = faceHeight * 3;
+  const cubeMapCanvas = createCanvas(200,200);
+  
+  cubeMapCanvas.width = faceWidth * 4;
+  cubeMapCanvas.height = faceHeight * 3;
+
+  // Get the 2D rendering context of the canvas
+  const ctx = cubeMapCanvas.getContext('2d');
+
+  // Map pixels from equirectangular to cube map
+  for (let faceIndex = 0; faceIndex < 6; faceIndex++) {
+    const xOffset = faceIndex * faceWidth;
+    console.log(1)
+
+    for (let y = 0; y < faceHeight; y++) {
+      for (let x = 0; x < faceWidth; x++) {
+        // Calculate the corresponding position in the equirectangular image
+        const u = (x + xOffset) / equirectangularWidth;
+        const v = y / equirectangularHeight;
+        // Get the color from the equirectangular image using bilinear interpolation
+        const color = getBilinearInterpolatedColor(equirectangularImage, u, v);
+        // Set the color on the cube map canvas
+        ctx.fillStyle = color;
+        ctx.fillRect(x + xOffset, y, 1, 1);
+      }
+    }
+  }
+
+  return {a: 1}
+
+  return {
+    f: ctx.getImageData(0, 0, faceWidth, faceHeight)
+  }
+
+  // Return the cube map canvas
+  return cubeMapCanvas;
+}
+
+function getBilinearInterpolatedColor(image: ImageData, u: number, v: number) {
+  const x = u * (image.width - 1);
+  const y = v * (image.height - 1);
+
+  const x0 = Math.floor(x);
+  const y0 = Math.floor(y);
+  const x1 = Math.ceil(x);
+  const y1 = Math.ceil(y);
+
+  const colorTopLeft = getPixelColor(image, x0, y0);
+  const colorTopRight = getPixelColor(image, x1, y0);
+  const colorBottomLeft = getPixelColor(image, x0, y1);
+  const colorBottomRight = getPixelColor(image, x1, y1);
+
+  const horizontalBlend = x - x0;
+  const verticalBlend = y - y0;
+
+  const topBlend = interpolateColor(colorTopLeft, colorTopRight, horizontalBlend);
+  const bottomBlend = interpolateColor(colorBottomLeft, colorBottomRight, horizontalBlend);
+
+  return interpolateColor(topBlend, bottomBlend, verticalBlend);
+}
+
+function getPixelColor(image: ImageData, x: number, y: number) {
+  const pixelIndex = (y * image.width + x) * 4;
+  const r = image.data[pixelIndex];
+  const g = image.data[pixelIndex + 1];
+  const b = image.data[pixelIndex + 2];
+  const a = image.data[pixelIndex + 3];
+
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+function interpolateColor(color1: any, color2: any, t: any) {
+  const rgba1 = color1.match(/\d+/g).map(Number);
+  const rgba2 = color2.match(/\d+/g).map(Number);
+
+  const r = Math.round(lerp(rgba1[0], rgba2[0], t));
+  const g = Math.round(lerp(rgba1[1], rgba2[1], t));
+  const b = Math.round(lerp(rgba1[2], rgba2[2], t));
+  const a = Math.round(lerp(rgba1[3], rgba2[3], t));
+
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+function lerp(start: number, end: number, t: number) {
+  return start + (end - start) * t;
+}
+
+export async function convertEquirectangularToCubeMap2(equirectangularImageBuffer: Buffer, equirectangularWidth: number, equirectangularHeight: number) {
+  // Calculate dimensions for each face
+  const faceWidth = Math.floor(equirectangularWidth / 6)
+  const faceHeight = Math.floor(faceWidth / 2)
+  // loadImageFromBuffer
+  // Create a buffer for the cube map
+  // const cubeMapBuffer = Buffer.alloc(faceWidth * faceHeight * 4 * 6);
+  console.log(faceWidth, faceHeight)
+  const cubeMapBuffer = await sharp({
+    create: {
+      width: 5,
+      height: 5,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 1 },
+    },
+  }).png().toBuffer()
+
+  // cubeMapBuffer.ensureAlpha()
+  // // cubeMapBuffer.raw()
+
+  // const { data, info } = await cubeMapBuffer.toBuffer({ resolveWithObject: true });
+
+  // console.log(data.toJSON())
+
+  const pixelIndex = (1 * 5 + 1) * 4;
+
+  // Thay đổi giá trị RGB(A) của pixel
+  cubeMapBuffer[pixelIndex] = 255;
+  cubeMapBuffer[pixelIndex + 1] = 255;
+  cubeMapBuffer[pixelIndex + 2] = 255;
+  cubeMapBuffer[pixelIndex + 3] = 255;
+
+  // console.log(data.toJSON())
+
+  // cubeMapBuffer.fill(255);
+
+  // cubeMapBuffer[0] = 136
+  // cubeMapBuffer[1] = 80
+  // cubeMapBuffer[2] = 78
+  // cubeMapBuffer[3] = 71
+
+  return cubeMapBuffer
+
+  console.log(equirectangularWidth, equirectangularHeight)
+
+  // Map pixels from equirectangular to cube map
+  for (let faceIndex = 0; faceIndex < 6; faceIndex++) {
+    const xOffset = faceIndex * faceWidth;
+    const faceBufferOffset = faceIndex * faceWidth * faceHeight * 4;
+    console.log(faceIndex)
+
+    for (let y = 0; y < faceHeight; y++) {
+      for (let x = 0; x < faceWidth; x++) {
+        // Calculate the corresponding position in the equirectangular image
+        const u = (x + xOffset) / equirectangularWidth;
+        const v = y / equirectangularHeight;
+
+        // Get the color from the equirectangular image using bilinear interpolation
+        const color = getBilinearInterpolatedColor3(equirectangularImageBuffer, equirectangularWidth, equirectangularHeight, u, v);
+
+        // Set the color in the cube map buffer
+        const bufferOffset = faceBufferOffset + (y * faceWidth + x) * 4;
+        // cubeMapBuffer[bufferOffset] = color[0];
+        // cubeMapBuffer[bufferOffset + 1] = color[1];
+        // cubeMapBuffer[bufferOffset + 2] = color[2];
+        // cubeMapBuffer[bufferOffset + 3] = color[3];
+        cubeMapBuffer[bufferOffset] = 255;
+        cubeMapBuffer[bufferOffset + 1] = 255;
+        cubeMapBuffer[bufferOffset + 2] = 255;
+        cubeMapBuffer[bufferOffset + 3] = 255;
+      }
+    }
+  }
+
+  // Return the cube map buffer
+  return cubeMapBuffer;
+}
+
+function getBilinearInterpolatedColor3(imageBuffer: any, imageWidth: any, imageHeight: any, u: any, v: any) {
+  const x = Math.floor(u * (imageWidth - 1));
+  const y = Math.floor(v * (imageHeight - 1));
+  const xWeight = u * (imageWidth - 1) - x;
+  const yWeight = v * (imageHeight - 1) - y;
+
+  const index = (y * imageWidth + x) * 4;
+  const indexRight = index + 4;
+  const indexBottom = index + imageWidth * 4;
+  const indexBottomRight = indexBottom + 4;
+
+  const colorTopLeft = [
+    imageBuffer[index],
+    imageBuffer[index + 1],
+    imageBuffer[index + 2],
+    imageBuffer[index + 3]
+  ];
+  const colorTopRight = [
+    imageBuffer[indexRight],
+    imageBuffer[indexRight + 1],
+    imageBuffer[indexRight + 2],
+    imageBuffer[indexRight + 3]
+  ];
+  const colorBottomLeft = [
+    imageBuffer[indexBottom],
+    imageBuffer[indexBottom + 1],
+    imageBuffer[indexBottom + 2],
+    imageBuffer[indexBottom + 3]
+  ];
+  const colorBottomRight = [
+    imageBuffer[indexBottomRight],
+    imageBuffer[indexBottomRight + 1],
+    imageBuffer[indexBottomRight + 2],
+    imageBuffer[indexBottomRight + 3]
+  ];
+
+  const color = [
+    (1 - xWeight) * (1 - yWeight) * colorTopLeft[0] + xWeight * (1 - yWeight) * colorTopRight[0] +
+    (1 - xWeight) * yWeight * colorBottomLeft[0] + xWeight * yWeight * colorBottomRight[0],
+    (1 - xWeight) * (1 - yWeight) * colorTopLeft[1] + xWeight * (1 - yWeight) * colorTopRight[1] +
+    (1 - xWeight) * yWeight * colorBottomLeft[1] + xWeight * yWeight * colorBottomRight[1],
+    (1 - xWeight) * (1 - yWeight) * colorTopLeft[2] + xWeight * (1 - yWeight) * colorTopRight[2] +
+    (1 - xWeight) * yWeight * colorBottomLeft[2] + xWeight * yWeight * colorBottomRight[2],
+    (1 - xWeight) * (1 - yWeight) * colorTopLeft[3] + xWeight * (1 - yWeight) * colorTopRight[3] +
+    (1 - xWeight) * yWeight * colorBottomLeft[3] + xWeight * yWeight * colorBottomRight[3]
+  ];
+
+  return color;
+}
+
+function getBilinearInterpolatedColor2(imageBuffer: any, imageWidth: any, imageHeight: any, u: any, v: any) {
+  const x = u * (imageWidth - 1);
+  const y = v * (imageHeight - 1);
+
+  const x0 = Math.floor(x);
+  const y0 = Math.floor(y);
+  const x1 = Math.ceil(x);
+  const y1 = Math.ceil(y);
+
+  const colorTopLeft = getPixelColor2(imageBuffer, imageWidth, x0, y0);
+  const colorTopRight = getPixelColor2(imageBuffer, imageWidth, x1, y0);
+  const colorBottomLeft = getPixelColor2(imageBuffer, imageWidth, x0, y1);
+  const colorBottomRight = getPixelColor2(imageBuffer, imageWidth, x1, y1);
+
+  const horizontalBlend = x - x0;
+  const verticalBlend = y - y0;
+
+  const topBlend = interpolateColor2(colorTopLeft, colorTopRight, horizontalBlend);
+  const bottomBlend = interpolateColor2(colorBottomLeft, colorBottomRight, horizontalBlend);
+
+  return interpolateColor2(topBlend, bottomBlend, verticalBlend);
+}
+
+function interpolateColor2(color1: any, color2: any, t: any) {
+  const r = Math.round(lerp(color1[0], color2[0], t));
+  const g = Math.round(lerp(color1[1], color2[1], t));
+  const b = Math.round(lerp(color1[2], color2[2], t));
+  const a = Math.round(lerp(color1[3], color2[3], t));
+
+  return [r, g, b, a];
+}
+
+function getPixelColor2(imageBuffer: any, imageWidth: any, x: any, y: any) {
+  const pixelIndex = (y * imageWidth + x) * 4;
+  const r = imageBuffer[pixelIndex];
+  const g = imageBuffer[pixelIndex + 1];
+  const b = imageBuffer[pixelIndex + 2];
+  const a = imageBuffer[pixelIndex + 3];
+
+  return [r, g, b, a];
 }

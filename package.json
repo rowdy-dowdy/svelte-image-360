@@ -50,6 +50,7 @@
 		"jsonwebtoken": "^9.0.0",
 		"marzipano": "^0.10.2",
 		"os": "^0.1.2",
+		"panorama-to-cubemap": "^1.0.2",
 		"path": "^0.12.7",
 		"postcss": "^8.4.21",
 		"sharp": "^0.32.1",

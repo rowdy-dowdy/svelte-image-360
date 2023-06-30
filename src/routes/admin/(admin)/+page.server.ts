@@ -2,7 +2,7 @@ export const ssr = false;
 
 import { fail } from '@sveltejs/kit'
 import * as fs from 'fs/promises'
-import { existsSync, mkdirSync, rmSync } from "fs"
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "fs"
 import sharp from "sharp"
 import AdmZip from "adm-zip"
 import {tmpdir, type} from 'os'
@@ -11,7 +11,7 @@ import db from '$lib/server/prismadb.js'
 import type { InfoHotspots, LinkHotspots, Scene } from '@prisma/client'
 import { v4 } from 'uuid';
 import { ImageData, createCanvas, loadImage } from "canvas";
-import { getDataURL, renderFace, renderFacePromise } from '$lib/admin/convertServer.js';
+import { convertEquirectangularToCubeMap, convertEquirectangularToCubeMap2, getDataURL, renderFace, renderFacePromise } from '$lib/admin/convertServer.js';
 
 function tmpFile(p: string) {
   return path.join(tmpdir(),p)
@@ -77,6 +77,33 @@ export const actions = {
         image = data.get('image') as File,
         audio = data.get('audio') as File,
         description = data.get('description') as string
+
+      const start = process.hrtime();
+      // const imageData = await loadImage(Buffer.from(await image.arrayBuffer()))
+      // const { width: widthImageData, height: heightImageData } = imageData
+      // const canvasImageData = createCanvas(200, 200)
+      // const ctxImageData = canvasImageData.getContext('2d')
+      // canvasImageData.width = widthImageData
+      // canvasImageData.height = heightImageData
+      // ctxImageData.drawImage(imageData, 0, 0, widthImageData, heightImageData)
+      // const dataImageData = ctxImageData.getImageData(0, 0, widthImageData, heightImageData)
+      // const cubeMapCanvas = convertEquirectangularToCubeMap(dataImageData)
+      let imageData = sharp(await image.arrayBuffer())
+      const { width: w = 0, height: h = 0 } = await imageData.metadata()
+      const cubeMapBuffer = await convertEquirectangularToCubeMap2(Buffer.from(await image.arrayBuffer()), w, h)
+
+      console.log((cubeMapBuffer as Buffer).toJSON())
+
+      // await sharp(cubeMapBuffer).toFile(`./storage/test.png`)
+      // .then((data: any) => {
+      //   return data
+      // })
+      await fs.writeFile('./storage/test.png', cubeMapBuffer);
+
+      const end = process.hrtime(start);
+      const executionTime = (end[0] * 1000) + (end[1] / 1000000);
+      console.log({executionTime})
+      return {executionTime}
 
       const canvas = createCanvas(200, 200)
       const ctx = canvas.getContext('2d')
