@@ -11,5 +11,5 @@ vite.config.ts.timestamp-*
 
 /prisma/migrations
 prisma/dev.db
-/storage
-!/storage/images/user
+storage/
+!storage/images/user/
