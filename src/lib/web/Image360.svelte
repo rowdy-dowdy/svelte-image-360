@@ -31,15 +31,24 @@
   }
 
   let scenes: SceneType[] = []
+  let currentScene = data[0] 
+  let autoRotateCheck = true
 
   let autoRotate: Function | null = Marzipano.autorotate({
     yawSpeed: 0.03,
-    targetPitch: 0,
+    targetPitch: currentScene.initialViewParameters.pitch,
     targetFov: Math.PI/2
   })
 
-  let currentScene = data[0] 
-  let autoRotateCheck = true
+  $: changeAutoRotate(currentScene)
+
+  const changeAutoRotate = (currentScene: SceneDataType) => {
+    autoRotate = Marzipano.autorotate({
+      yawSpeed: 0.03,
+      targetPitch: currentScene.initialViewParameters.pitch,
+      targetFov: Math.PI/2
+    })
+  }
 
   // web
   $: sceneSlug = $page.params.slug

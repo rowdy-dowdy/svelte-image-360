@@ -36,7 +36,7 @@
 {/if}
 {#if !start}
   <div transition:scale={{start: 2, duration: 700, opacity: 0}} class="fixed w-full h-screen top-0 left-0 z-[100] bg-white">
-    <img src="https://vr360.danangfantasticity.com/assets/vr360.jpg" class="w-full h-full object-cover">
+    <img src="{data.settings.find(v => v.name == "banner")?.value}" class="w-full h-full object-cover" loading="lazy">
 
     <div class="absolute w-full h-full left-0 top-0 flex flex-col items-center justify-center gap-8">
       <h3 class="text-3xl md:text-5xl lg:text-7xl font-semibold text-white text-center" style="text-shadow: 2px 7px 5px rgba(0,0,0,0.3), 

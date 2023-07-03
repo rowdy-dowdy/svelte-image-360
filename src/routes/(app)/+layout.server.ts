@@ -22,5 +22,7 @@ export const load = async ({request}) => {
     }
   })
 
-  return { scenes: scenesData }
+  const settings = db.setting.findMany()
+
+  return { scenes: scenesData, settings }
 }

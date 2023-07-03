@@ -72,3 +72,27 @@ model LinkHotspots {
   sceneId String
   scene   Scene  @relation(fields: [sceneId], references: [id])
 }
+
+model GroupSetting {
+  id        String @id @default(uuid())
+  name      String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  settings Setting[]
+}
+
+model Setting {
+  id String @id @default(uuid())
+  name    String @unique
+  field   String
+  details String?
+  value String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  groupId String
+  group   GroupSetting  @relation(fields: [groupId], references: [id])
+}

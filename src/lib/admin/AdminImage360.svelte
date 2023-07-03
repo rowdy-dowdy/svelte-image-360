@@ -10,7 +10,7 @@
   import type { SceneDataType } from "../../routes/admin/(admin)/+page.server.js";
   import type { LinkHotspots, InfoHotspots } from "@prisma/client";
   import { page } from "$app/stores";
-  import { goto } from "$app/navigation";
+  import { goto, invalidateAll } from "$app/navigation";
   import { Button, Dropdown, DropdownDivider, DropdownItem, Indicator, Modal } from "flowbite-svelte";
   import ModelAddHotspot from "./ModelAddHotspot.svelte";
   import ModelDeleteHotspot from "./ModelDeleteHotspot.svelte";
@@ -19,6 +19,9 @@
   import ModelEditScene from "./ModelEditScene.svelte";
   import LinkHotspot2 from "$lib/web/LinkHotspot2.svelte";
   import LinkHotspot3 from "$lib/web/LinkHotspot3.svelte";
+  import { deserialize, enhance } from "$app/forms";
+  import { append } from "svelte/internal";
+  import { alertStore } from "../../stores/alert.js";
 
   export let data: SceneDataType[]
 
@@ -68,15 +71,15 @@
     }
   }) : [] as SceneType[]
 
-  let autoRotate: Function | null = Marzipano.autorotate({
-    yawSpeed: 0.03,
-    targetPitch: 0,
-    targetFov: Math.PI/2
-  })
-
   let currentScene = data[0] 
   let fullScreen = false
   let autoRotateCheck = false
+
+  let autoRotate: Function | null = Marzipano.autorotate({
+    yawSpeed: 0.03,
+    targetPitch: currentScene.initialViewParameters.pitch,
+    targetFov: Math.PI/2
+  })
 
   // web
   $: sceneId = $page.url.searchParams.get('scene')
@@ -250,6 +253,8 @@
       pitch: coordinates.pitch
     }
 
+    console.log({coordinates})
+
     showFormModalAdd = true
   }
 
@@ -299,7 +304,38 @@
   const editScene = () => {
     valueEditScene = currentScene
     hiddenPopupEditScene = false
-  } 
+  }
+
+  const updateInitialViewParametersScene = async () => {
+    if (!viewer) return
+
+    let data = new FormData()
+    data.append('id', sceneId || "")
+
+    let _params = (viewer.view() as any)._params
+    const initialViewParameters = { pitch: _params.pitch, yaw: _params.yaw, fov: _params.fov }
+    data.append('initialViewParameters', JSON.stringify(initialViewParameters))
+    
+    const res = await fetch('/admin?/updateInitialViewParametersScene', {
+      method: 'post',
+      body: data
+    })
+
+    const result = deserialize(await res.text());
+
+    if (result.type === 'success') {
+      await invalidateAll()
+
+      alertStore.addAlert({
+        type: 'success'
+      })
+    }
+    else {
+      alertStore.addAlert({
+        type: 'error'
+      })
+    }
+  }
 </script>
 
 <svelte:head>
@@ -326,22 +362,28 @@
   <div class="text-center p-2">{currentScene.name}</div>
 
   <div class="absolute right-0 top-0 flex-none flex divide-x divide-transparent">
+    <form method="post" on:submit|preventDefault={updateInitialViewParametersScene}>
+      <button type="submit" class="icon w-10 h-10 p-2 bg-blue-500 hover:bg-blue-400 cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" ><path d="M5 21h14a2 2 0 0 0 2-2V8a1 1 0 0 0-.29-.71l-4-4A1 1 0 0 0 16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2zm10-2H9v-5h6zM13 7h-2V5h2zM5 5h2v4h8V5h.59L19 8.41V19h-2v-5a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v5H5z"></path></svg>
+      </button>
+    </form>
+
     {#if autoRotateCheck}
-      <span class="icon w-10 h-10 p-2 bg-black cursor-pointer" on:click={toggleAutorotate}>
+      <span class="icon w-10 h-10 p-2 bg-black hover:bg-gray-600 cursor-pointer" on:click={toggleAutorotate}>
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z"></path><path d="M9 9h6v6H9z"></path></svg>
       </span>
     {:else}
-      <span class="icon w-10 h-10 p-2 bg-black cursor-pointer" on:click={toggleAutorotate}>
+      <span class="icon w-10 h-10 p-2 bg-black hover:bg-gray-600 cursor-pointer" on:click={toggleAutorotate}>
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z"></path><path d="m9 17 8-5-8-5z"></path></svg>
       </span>
     {/if}
 
     {#if !fullScreen}
-      <span class="icon w-10 h-10 p-2 bg-black cursor-pointer" on:click={toggleFullScreen}>
+      <span class="icon w-10 h-10 p-2 bg-black hover:bg-gray-600 cursor-pointer" on:click={toggleFullScreen}>
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M5 5h5V3H3v7h2zm5 14H5v-5H3v7h7zm11-5h-2v5h-5v2h7zm-2-4h2V3h-7v2h5z"></path></svg>
       </span>
     {:else}
-      <span class="icon w-10 h-10 p-2 bg-black cursor-pointer" on:click={toggleFullScreen}>
+      <span class="icon w-10 h-10 p-2 bg-black hover:bg-gray-600 cursor-pointer" on:click={toggleFullScreen}>
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M10 4H8v4H4v2h6zM8 20h2v-6H4v2h4zm12-6h-6v6h2v-4h4zm0-6h-4V4h-2v6h6z"></path></svg>
       </span>
     {/if}

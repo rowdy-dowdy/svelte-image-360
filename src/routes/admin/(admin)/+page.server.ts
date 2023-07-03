@@ -10,12 +10,8 @@ import path from 'path'
 import db from '$lib/server/prismadb.js'
 import type { InfoHotspots, LinkHotspots, Scene } from '@prisma/client'
 import { v4 } from 'uuid';
-import { ImageData, createCanvas, loadImage } from "canvas";
-import { convertEquirectangularToCubeMap, convertEquirectangularToCubeMap2, getDataURL, renderFace, renderFacePromise } from '$lib/admin/convertServer.js';
-
-function tmpFile(p: string) {
-  return path.join(tmpdir(),p)
-}
+import { createCanvas, loadImage, ImageData } from "canvas";
+import { renderFacePromise } from '$lib/admin/convertServer.js';
 
 const facePositions = {
   pz: {x: 1, y: 1, name: 'b'},
@@ -64,6 +60,8 @@ export const load = async () => {
     }
   })
 
+  console.log(scenesData)
+
   return { scenes: scenesData }
 }
 
@@ -78,66 +76,93 @@ export const actions = {
         audio = data.get('audio') as File,
         description = data.get('description') as string
 
-      const start = process.hrtime();
-      // const imageData = await loadImage(Buffer.from(await image.arrayBuffer()))
-      // const { width: widthImageData, height: heightImageData } = imageData
-      // const canvasImageData = createCanvas(200, 200)
-      // const ctxImageData = canvasImageData.getContext('2d')
-      // canvasImageData.width = widthImageData
-      // canvasImageData.height = heightImageData
-      // ctxImageData.drawImage(imageData, 0, 0, widthImageData, heightImageData)
-      // const dataImageData = ctxImageData.getImageData(0, 0, widthImageData, heightImageData)
-      // const cubeMapCanvas = convertEquirectangularToCubeMap(dataImageData)
-      let imageData = sharp(await image.arrayBuffer())
-      const { width: w = 0, height: h = 0 } = await imageData.metadata()
-      const cubeMapBuffer = await convertEquirectangularToCubeMap2(Buffer.from(await image.arrayBuffer()), w, h)
-
-      console.log((cubeMapBuffer as Buffer).toJSON())
-
-      await sharp(cubeMapBuffer as Buffer).toFile(`./storage/test.png`)
-      .then((data: any) => {
-        return data
-      })
-      // await fs.writeFile('./storage/test.png', cubeMapBuffer);
-
-      const end = process.hrtime(start);
-      const executionTime = (end[0] * 1000) + (end[1] / 1000000);
-      console.log({executionTime})
-      return {executionTime}
-
-      const canvas = createCanvas(200, 200)
-      const ctx = canvas.getContext('2d')
-
-      // image 360 to cube map
-      let renderOptions = await loadImage(Buffer.from(await image.arrayBuffer())).then((image) => {
-        const { width, height } = image
-        canvas.width = width
-        canvas.height = height
-        ctx.drawImage(image, 0, 0, width, height)
+      const imageSharp = sharp(await image.arrayBuffer(), { limitInputPixels: false })
       
-        const dataImage = ctx.getImageData(0, 0, width, height)
+      let { width: w = 0, height: h = 0} = await imageSharp.metadata()
 
-        let renderOptions = []
-    
-        for (let [faceName, position] of Object.entries(facePositions)) {
-          const options = {
-            data: dataImage,
-            face: faceName,
-            rotation: Math.PI * 180 / 180,
-            interpolation: "lanczos",
-          }
-          renderOptions.push(options)
+      if (w / h != 2) {
+        throw "Ảnh equirectangular chuyển thành cube map phải có tỷ lệ 2:1"
+      }
+
+      if (w > 16384) {
+        imageSharp.resize({width: 16384})
+        w = 16384
+        h = 8192
+      }
+      else if (w > 4096) {
+        imageSharp.resize({width: 4096})
+        w = 4096
+        h = 2048
+      }
+      else {
+        throw "Ảnh có kich thước quá bé"
+      }
+
+      // if (h % 2 != 0) {
+      //   imageSharp.resize({height: h - (h % 2)})
+      //   h = h - (h % 2)
+      //   w = h * 2
+      // }
+
+      const dataImage = await imageSharp.raw().ensureAlpha().toBuffer()
+        .then((img) => {
+          let imageData = new Uint8ClampedArray(img)
+          return new ImageData(imageData, w, h)
+        })
+
+      // const dataImage = new ImageData(new Uint8ClampedArray(Buffer.from(await image.arrayBuffer())),w,h)
+
+      let renderOptions = []
+
+      for (let [faceName, position] of Object.entries(facePositions)) {
+        const options = {
+          // data: dataImage,
+          face: faceName,
+          rotation: Math.PI,
+          interpolation: "linear",
         }
+        renderOptions.push(options)
+      }
 
-        return renderOptions
-      })
-
-      let images = await Promise.all(renderOptions.map(v => {
-        return renderFacePromise(v)
+      const images = await Promise.all(renderOptions.map(v => {
+        return renderFacePromise({data: dataImage, ...v})
       }))
 
-      const findImage = (name: string) => 
-        getDataURL(images[Object.entries(facePositions).findIndex(v => v[1].name == name)])
+      // // image 360 to cube map
+      // let images = await loadImage(Buffer.from(await image.arrayBuffer())).then(async (image) => {
+      //   const { width, height } = image
+      //   const canvas = createCanvas(width, height)
+      //   console.log({width, height})
+      //   const ctx = canvas.getContext('2d')
+      //   ctx.drawImage(image, 0, 0, width, height)
+
+      //   console.log("drawImage")
+      
+      //   const dataImage = await new Promise(res => res(ctx.getImageData(0, 0, width, height))) 
+
+      //   console.log("getImageData")
+
+      //   let renderOptions = []
+    
+      //   for (let [faceName, position] of Object.entries(facePositions)) {
+      //     console.log({faceName})
+      //     const options = {
+      //       // data: dataImage,
+      //       face: faceName,
+      //       rotation: Math.PI,
+      //       interpolation: "linear",
+      //     }
+      //     renderOptions.push(options)
+      //   }
+
+      //   const data = await Promise.all(renderOptions.map(v => {
+      //     return renderFacePromise({data: dataImage, ...v})
+      //   }))
+
+      //   return data
+      // })
+
+      const findImage = (name: string) => images[Object.entries(facePositions).findIndex(v => v[1].name == name)]
 
       let b = findImage("b"),
           d = findImage("d"),
@@ -145,22 +170,22 @@ export const actions = {
           l = findImage("l"),
           r = findImage("r"),
           u = findImage("u")
-          let uuid = v4()
+      let uuid = v4()
 
       let metadata = await sharp(b).metadata()
-      let { width = 0 } = metadata
+      let width = Math.floor(metadata.width || 0)
 
-      let maxZoom = Math.max(Math.floor(Math.log2(width!) - 8),3)
+      let maxZoom = Math.max(Math.floor(Math.log2(width) - 8),3)
 
       // save image tiles
-      for(let i = 0; i < maxZoom; i++) {
+      for(let i = 1; i <= maxZoom; i++) {
         await Promise.all([
-          slipImageFace(b, "b", name, i+1, uuid, maxZoom),
-          slipImageFace(d, "d", name, i+1, uuid, maxZoom),
-          slipImageFace(f, "f", name, i+1, uuid, maxZoom),
-          slipImageFace(l, "l", name, i+1, uuid, maxZoom),
-          slipImageFace(r, "r", name, i+1, uuid, maxZoom),
-          slipImageFace(u, "u", name, i+1, uuid, maxZoom),
+          slipImageFace(b, "b", name, i, uuid, maxZoom),
+          slipImageFace(d, "d", name, i, uuid, maxZoom),
+          slipImageFace(f, "f", name, i, uuid, maxZoom),
+          slipImageFace(l, "l", name, i, uuid, maxZoom),
+          slipImageFace(r, "r", name, i, uuid, maxZoom),
+          slipImageFace(u, "u", name, i, uuid, maxZoom),
         ])
       }
       await mergeImagePreview(b,d,f,l,r,u,name,uuid, maxZoom)
@@ -288,6 +313,29 @@ export const actions = {
           id: id,
         },
         data: dataUpdate
+      })
+
+      return { success: true, scene }
+    }
+    catch(e) {
+      console.log({e})
+      return fail(400, { error: `Đã có lỗi xảy ra vui lòng thử lại sau` })
+    }
+  },
+
+  updateInitialViewParametersScene: async ({ cookies, request, url }) => {
+    try {
+      const data = await request.formData()
+      let initialViewParameters = data.get('initialViewParameters') as string,
+        id = data.get('id') as string
+
+      const scene = await db.scene.update({
+        where: {
+          id: id,
+        },
+        data: {
+          initialViewParameters: initialViewParameters
+        }
       })
 
       return { success: true, scene }
@@ -505,18 +553,18 @@ const slipImageFace = async (
   }
 
   let metadata = await image.metadata()
-  let { width = 0, height = 0 } = metadata
+  let [width, height] = [Math.floor(metadata.width || 0), Math.floor(metadata.height || 0)]
 
   if (zoom < maxZoom) {
-    image.resize(Math.round(width/Math.pow(2,maxZoom - zoom)), Math.round(height/Math.pow(2,maxZoom - zoom)))
+    image.resize(Math.floor(width/Math.pow(2,maxZoom - zoom)), Math.floor(height/Math.pow(2,maxZoom - zoom)))
   }
 
   let length = Math.pow(2,(zoom - 1)) 
 
-  let distance = width / length
+  let distance = Math.floor(width / length)
 
   if (zoom < maxZoom) {
-    distance = +(width/Math.pow(2,maxZoom - zoom)) / length
+    distance = Math.floor((width/Math.pow(2,maxZoom - zoom)) / length)
   }
 
   for(let i = 0; i < length; i++) {
@@ -551,7 +599,7 @@ const mergeImagePreview = async(
 
   let metadata = await imageB.metadata()
 
-  let { width = 0 } = metadata
+  let width = Math.round(metadata.width || 0)
 
   let imagePreview = imageB.clone()
   imagePreview.resize(width, width*6)
@@ -600,7 +648,7 @@ const saveImageMobile = async(
 
   let metadata = await imageB.metadata()
 
-  let { width = 0, height = 0 } = metadata
+  let width = Math.round(metadata.width || 0)
 
   if (!existsSync(`./storage/tiles/${uuid}/mobile`)) {
     mkdirSync(`./storage/tiles/${uuid}/mobile`, { recursive: true })

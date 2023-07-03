@@ -34,17 +34,20 @@
   </div>
 {/if}
 
-<div class="absolute top-0 left-0 w-full h-full p-6 pointer-events-none overflow-hidden">
-  <div class="md:pl-6 lg:pl-12">
+<div class="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden py-8">
+  <!-- <div class="md:pl-6 lg:pl-12">
     <div class="w-32 h-32">
       <img src="/logo.png" alt="logo Bắc Hà" class="w-full h-full object-contain">
     </div>
-  </div>
+  </div> -->
   
   {#if $showListScene}
-    <div transition:fly={{x: -200}} class="flex flex-col mt-12 max-w-[280px] text-white"
+    <div transition:fly={{x: -200}} class="h-full flex flex-col items-center max-w-[280px] text-white rounded-r  bg-black/70 backdrop-blur-md"
       on:mouseleave={(e) => leaveSceneTitle(e)}
     >
+      <div class="w-32 h-32 p-4">
+        <img src="/logo.png" alt="logo Bắc Hà" class="w-full h-full object-contain">
+      </div>
       {#each data as item (item.id)}
         <div class="flex py-1 space-x-2 items-center cursor-pointer group transition-all duration-[0.4s] origin-left hover:scale-[1.2] pointer-events-auto"
           on:mouseenter={(e) => enterSceneTitle(e,item.id)}

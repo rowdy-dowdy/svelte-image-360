@@ -36,7 +36,6 @@
 	
 	$: stages = data.scenes.map(v => v.id)
   $: checkSort = (dataFilter.length == data.scenes.length) && (JSON.stringify(data.scenes.map(v => v.id)) != JSON.stringify(stages))
-  $: console.log({stages, data})
 
 	onMount(async function() {
 		Sortable.create(listScene, {
