@@ -384,7 +384,7 @@ export const actions = {
           direction = data.get('direction') as string,
           hotspotType = data.get('hotspotType') as string,
           type = data.get('type') as string,
-          image = data.get('image') as File | null | undefined,
+          video = data.get('video') as File | null | undefined,
           title = data.get('title') as string,
           description = data.get('description') as string
 
@@ -403,21 +403,34 @@ export const actions = {
       else if (hotspotType == "info") {
 
         let imageUrl: sharp.OutputInfo | null = null
+        let videoUrl: string | null = null
         let uuid = v4()
-        if (image && image?.size > 0) {
+        // if (image && image?.size > 0) {
+
+        //   if (!existsSync(`./storage/info-hotspots`)) {
+        //     mkdirSync(`./storage/info-hotspots`, { recursive: true })
+        //   }
+
+        //   let imageFile = sharp(await image.arrayBuffer())
+        //   let { format } = await imageFile.metadata()
+          
+        //   imageUrl = await imageFile
+        //     .toFile(`./storage/info-hotspots/${uuid}.${format}`)
+        //     .then((data) => {
+        //       return data
+        //     })
+        // }
+
+        if (video && video?.size > 0) {
 
           if (!existsSync(`./storage/info-hotspots`)) {
             mkdirSync(`./storage/info-hotspots`, { recursive: true })
           }
 
-          let imageFile = sharp(await image.arrayBuffer())
-          let { format } = await imageFile.metadata()
+          let mimetype = path.extname(video.name)
           
-          imageUrl = await imageFile
-            .toFile(`./storage/info-hotspots/${uuid}.${format}`)
-            .then((data) => {
-              return data
-            })
+          await fs.writeFile(`./storage/info-hotspots/${uuid}${mimetype}`, video.stream() as any)
+          videoUrl = `/storage/info-hotspots/${uuid}${mimetype}`
         }
 
         const infoHotspot = await db.infoHotspots.create({
@@ -429,7 +442,8 @@ export const actions = {
             type: type,
             title: title,
             description: description,
-            image: imageUrl ? `/storage/info-hotspots/${uuid}.${imageUrl.format}` : null
+            image: imageUrl ? `/storage/info-hotspots/${uuid}.${imageUrl.format}` : null,
+            video: videoUrl
           }
         })
       }

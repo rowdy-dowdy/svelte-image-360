@@ -2,6 +2,8 @@ import db from "$lib/server/prismadb"
 import type { GroupSetting, Setting } from "@prisma/client"
 import { fail } from "@sveltejs/kit"
 import { existsSync, mkdirSync } from "fs"
+import { writeFile } from "fs/promises";
+import path from "path"
 import sharp from "sharp"
 import { v4 } from "uuid"
 
@@ -80,7 +82,7 @@ export const actions = {
       let updates = []
       for (var [key, value] of data.entries()) {
         console.log(key, value);
-        if (value) {
+        if (value && ((value as File).size > 0 || value.length > 0)) {
           if (typeof value === 'string') {
             updates.push(db.setting.updateMany({
               where: {
@@ -93,11 +95,21 @@ export const actions = {
           }
           else if (value instanceof File) {
             let uuid = v4()
-            if (!existsSync(`./storage/images/settings`)) {
-              mkdirSync(`./storage/images/settings`, { recursive: true })
+            if (!existsSync(`./storage/settings`)) {
+              mkdirSync(`./storage/settings`, { recursive: true })
             }
-            await sharp(await value.arrayBuffer()).png({ quality: 80, force: true }).toFile(`./storage/images/settings/${uuid}.png`);
-            let temp = `/storage/images/settings/${uuid}.png`
+
+            let mimetype = path.extname(value.name)
+            let temp = ''
+
+            if ([".jpg", ".png", ".jpge", ".webp"].includes(mimetype)) {
+              await sharp(await value.arrayBuffer()).jpeg({ quality: 60, force: true, mozjpeg: true }).toFile(`./storage/settings/${uuid}.jpg`);
+              temp = `/storage/settings/${uuid}.jpg`
+            }
+            else if ([".mp3"].includes(mimetype)) {
+              await writeFile(`./storage/settings/${uuid}${mimetype}`, value.stream() as any)
+              temp = `/storage/settings/${uuid}${mimetype}`
+            }
             
             updates.push(db.setting.updateMany({
               where: {

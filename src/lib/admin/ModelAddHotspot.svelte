@@ -77,14 +77,15 @@
     { value: '1', name: 'Cơ bản' },
     { value: '2', name: 'Trên cao' },
     { value: '3', name: 'Mặt đất' },
+    { value: '4', name: 'Cơ bản 2' },
   ]
 
   let selectTypesLink = typesLink[0].value
 
   // info
   let types = [
-    { value: '1', name: 'Loại 1' },
-    { value: '2', name: 'Loại 2' },
+    { value: '1', name: 'Cơ bản' },
+    { value: '2', name: 'Video' },
   ]
 
   let selectTypes = types[0].value
@@ -169,29 +170,20 @@
             label="Tọa độ"
           />
 
-          <!-- <Label
+          <Label
             >Loại
             <Select name="type" class="mt-2" items={types} bind:value={selectTypes} />
-          </Label> -->
+          </Label>
 
-          {#if selectTypes == "1"}
+          <div>
+            <Label for="title" class="mb-2">Tiêu đề</Label>
+            <Input type="text" id="tile" name="title" placeholder="Tiêu đề" required />
+          </div>
+
+          {#if selectTypes == "2"}
             <div>
-              <Label for="title" class="mb-2">Tiêu đề</Label>
-              <Input type="text" id="tile" name="title" placeholder="Tiêu đề" required />
-            </div>
-            <!-- <div>
-              <Label for="description" class="mb-2">Nội dung</Label>
-              <Textarea id="description" placeholder="Nội dung" rows="4" name="description" />
-            </div> -->
-          {:else if selectTypes == "2"}
-            <div>
-              <Label for="title" class="mb-2">Tiêu đề</Label>
-              <Input type="text" id="title" name="title" placeholder="Tiêu đề" required />
-            </div>
-            <div>
-              <Label for="image" class="pb-2">Ảnh</Label>
-              <Fileupload id="image" name="image" class="mb-2" />
-              <Helper>PNG, JPG or GIF.</Helper>
+              <Label for="video" class="pb-2">Video</Label>
+              <Fileupload id="video" name="video" class="mb-2" />
             </div>
           {/if}
 

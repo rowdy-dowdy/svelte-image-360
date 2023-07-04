@@ -40,21 +40,41 @@
       <img src="/logo.png" alt="logo Bắc Hà" class="w-full h-full object-contain">
     </div>
   </div> -->
+  <button class="absolute left-0 top-[20%] rounded-r py-1 px-2 text-white bg-black/50 grid place-items-center pointer-events-auto hover:bg-white/40 transition-colors"
+    on:click|preventDefault={() => $showListScene = true}
+  >
+    <span class="material-symbols-outlined !text-2xl">
+      view_list
+    </span>
+  </button>
   
   {#if $showListScene}
-    <div transition:fly={{x: -200}} class="h-full flex flex-col items-center max-w-[280px] text-white rounded-r  bg-black/70 backdrop-blur-md"
+    <div transition:fly={{x: -200}} class="relative h-full flex flex-col items-center space-y-4
+      max-w-[280px] text-white rounded-r-lg bg-black/40 backdrop-blur-md p-4 "
       on:mouseleave={(e) => leaveSceneTitle(e)}
     >
-      <div class="w-32 h-32 p-4">
-        <img src="/logo.png" alt="logo Bắc Hà" class="w-full h-full object-contain">
+      <div class="w-20 h-20">
+        <img src="/logo.png" alt="logo Bắc Hà" class="w-full h-full object-contain" loading="lazy">
       </div>
+
+      <button class="absolute top-0 right-4 rounded p-1 text-white bg-black/70 grid place-items-center pointer-events-auto hover:bg-white/40 transition-colors"
+        on:click|preventDefault={() => $showListScene = false}
+      >
+        <span class="material-symbols-outlined">
+          close
+        </span>
+      </button>
+
       {#each data as item (item.id)}
-        <div class="flex py-1 space-x-2 items-center cursor-pointer group transition-all duration-[0.4s] origin-left hover:scale-[1.2] pointer-events-auto"
+        <div class="w-full bg-black/40 rounded-lg pointer-events-auto p-4 pb-3 cursor-pointer hover:bg-white/40 transition-colors"
           on:mouseenter={(e) => enterSceneTitle(e,item.id)}
           on:click={() => clickSceneTitle(item.slug)}
         >
-          <div class="w-1 h-8 bg-white group-hover:bg-sky-600 {sceneSlug == item.slug ? '!bg-sky-600' : ''}"></div>
-          <span class="group-hover:text-teal-300 text-lg" style="text-shadow: rgb(0, 0, 0) 1px 1px 4px;">{item.name}</span>
+          <div class="w-full aspect-[5/2.5] rounded-lg overflow-hidden">
+            <img src="{item.url}/mobile/f.jpg" alt="{item.name}" class="w-full h-full object-cover">
+          </div>
+          <!-- <div class="w-1 h-8 bg-white group-hover:bg-sky-600 {sceneSlug == item.slug ? '!bg-sky-600' : ''}"></div> -->
+          <div class="text-center mt-2 text-sm md:text-base" style="text-shadow: rgb(0, 0, 0) 1px 1px 4px;">{item.name}</div>
         </div>
       {/each}
     </div>

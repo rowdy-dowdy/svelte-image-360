@@ -22,6 +22,7 @@
   import { deserialize, enhance } from "$app/forms";
   import { append } from "svelte/internal";
   import { alertStore } from "../../stores/alert.js";
+  import LinkHotspot4 from "$lib/web/LinkHotspot4.svelte";
 
   export let data: SceneDataType[]
 
@@ -124,6 +125,14 @@
     }
     else if (hotspot?.type == "3") {
       let toolbarComponent = new LinkHotspot3({
+			target: wrapper,
+        props: {
+          title: findSceneDataById(hotspot.target)?.name || ""
+        }
+      })
+    }
+    else if (hotspot?.type == "4") {
+      let toolbarComponent = new LinkHotspot4({
 			target: wrapper,
         props: {
           title: findSceneDataById(hotspot.target)?.name || ""

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
   import { invalidateAll } from "$app/navigation";
-  import { Button, Label, Modal, TabItem, Tabs, Input, Select } from "flowbite-svelte";
+  import { Button, Label, Modal, TabItem, Tabs, Input, Select, Fileupload, Helper } from "flowbite-svelte";
   import { alertStore } from "../../../../stores/alert";
   export let data
   let isGroupSettingsOpen = false
@@ -74,7 +74,7 @@
                     <Label for="{item.name}" class="mb-2 capitalize">{item.name}</Label>
                     <Input type="text" id="{item.name}" name="{item.name}" placeholder="{item.name}"  />
                   </div>
-                {:else if item.field == "file"}
+                {:else if item.field == "image"}
                   <div class="px-2 mb-4" style="width: {item.details?.width / 12 * 100}%">
                     {#if item.value}
                       <div class="w-40 h-40 rounded border border-gray-900 overflow-hidden mb-2">
@@ -83,6 +83,19 @@
                     {/if}
                     <Label for="{item.name}" class="mb-2 capitalize">{item.name}</Label>
                     <Input type="file" id="{item.name}" name="{item.name}" placeholder="{item.name}"  />
+                  </div>
+                {:else if item.field == "audio"}
+                  <div class="px-2 mb-4" style="width: {item.details?.width / 12 * 100}%">
+                    {#if item.value}
+                      <div class="flex mb-4 space-x-4 items-center">
+                        <audio controls>
+                          <source src="{item.value}" type="audio/mpeg">
+                        </audio>
+                      </div>
+                    {/if}
+                    <Label for="{item.name}" class="mb-2 capitalize">{item.name}</Label>
+                    <Fileupload id="{item.name}" accept=".mp3,audio/*" name="{item.name}" placeholder="{item.name}" />
+                    <Helper class="mt-1">MP3, audio.</Helper>
                   </div>
                 {/if} 
               {:else}
@@ -167,14 +180,16 @@
     }} 
     class="grid gap-6 w-[500px]"
   >
-    <input type="hidden" name="groupId" value={groupSettingActive.id}>
+    <input type="hidden" name="groupId" value={groupSettingActive?.id}>
     <div>
       <Label for="name" class="mb-2">Name</Label>
       <Input type="text" id="name" name="name" placeholder="name" required  />
     </div>
     <div>
       <Label>Select an option
-        <Select class="mt-2" items={[{value:"text", name: "text"}, {value:"file", name: "file"}]} name="field" value="text" />
+        <Select class="mt-2" items={[{value:"text", name: "text"}, 
+          {value:"image", name: "image"}, 
+          {value:"audio", name: "audio"}]} name="field" value="text" />
       </Label>
     </div>
     <div>

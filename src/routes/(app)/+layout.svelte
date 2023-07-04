@@ -28,7 +28,7 @@
 </svelte:head>
 
 {#if data.scenes.length > 0}
-  <Image360 data={data.scenes} />
+  <Image360 data={data.scenes} settingMainAudio={data.settings.find(v => v.name == "main audio")}/>
 {:else}
   <div class="fixed w-full h-screen top-0 left-0 grid place-items-center">
     Không có bối cảnh nào

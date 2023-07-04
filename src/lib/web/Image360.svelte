@@ -7,7 +7,7 @@
   import InfoHotSpotVideo from "$lib/web/InfoHotSpotVideo.svelte";
   import { hold } from "../../stores/pano.js";
   import type { SceneDataType } from "../../routes/admin/(admin)/+page.server.js";
-  import type { InfoHotspots, LinkHotspots } from "@prisma/client";
+  import type { InfoHotspots, LinkHotspots, Setting } from "@prisma/client";
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
   import { fade } from "svelte/transition";
@@ -23,6 +23,7 @@
 
   let viewerHTML: HTMLElement | null = null
   let viewer: Marzipano.Viewer | null = null
+  export let settingMainAudio: Setting | undefined
 
   type SceneType = {
     data: SceneDataType
@@ -216,7 +217,7 @@
         ? new Marzipano.CubeGeometry([{ tileSize: data.faceSize / 2, size: data.faceSize / 2 }])
         : new Marzipano.CubeGeometry(data.levels)
 
-      var limiter = Marzipano.RectilinearView.limit.traditional(mobileCheck() ? data.faceSize / 2 : data.faceSize, 100*Math.PI/180, 120*Math.PI/180)
+      var limiter = Marzipano.RectilinearView.limit.traditional(data.faceSize, 100*Math.PI/180, 120*Math.PI/180)
       var view = new Marzipano.RectilinearView(data.initialViewParameters, limiter)
 
       var scene = viewer!.createScene({
@@ -274,10 +275,19 @@
 
 <LeftSide data={data} sceneSlug={sceneSlug} />
 
-<BarOptions autoRotateCheck={autoRotateCheck} on:toggleAutorotate={toggleAutorotate} currentScene={currentScene} />
+<BarOptions {settingMainAudio} autoRotateCheck={autoRotateCheck} on:toggleAutorotate={toggleAutorotate} currentScene={currentScene} />
 
 <style lang="postcss">
   :global(#pano > canvas ~ div) {
     overflow: hidden !important;
   }
+  /* :global(#pano > canvas) {
+    position: absolute;
+    top: 0;
+    left: 0;
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    background-color: transparent;
+  } */
 </style>
