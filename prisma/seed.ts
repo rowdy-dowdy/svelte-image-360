@@ -14,7 +14,7 @@ async function main() {
   })
 
   const groupSettings = await prisma.$transaction(
-    ["Admin", "Website", "Sosial Netword"].map(v => {
+    ["Website"].map(v => {
       return prisma.groupSetting.create({
         data: {
           name: v,

@@ -6,7 +6,7 @@
 		"dev": "vite dev",
 		"dev2": "vite dev --host",
 		"start": "ORIGIN=https://vr360.kennatech.vn BODY_SIZE_LIMIT=104857600 node server.js",
-		"seed": "ts-node prisma/seed.ts",
+		"seed": "ts-node-esm ./prisma/seed.ts",
 		"build": "vite build",
 		"preview": "vite preview",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
