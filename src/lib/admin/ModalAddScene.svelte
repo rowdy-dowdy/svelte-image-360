@@ -1,15 +1,26 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { applyAction, deserialize, enhance } from '$app/forms';
-  import { Drawer, Button, CloseButton, Label, Fileupload, Helper, Input, Progressbar, Textarea } from 'flowbite-svelte'
+  import { Drawer, Button, CloseButton, Label, Fileupload, Helper, Input, Progressbar, Textarea, Select } from 'flowbite-svelte'
   import { sineIn } from 'svelte/easing';
   import { invalidateAll } from '$app/navigation';
   import { alertStore } from '../../stores/alert';
   import slugify from "slugify";
   import type { SceneDataType } from '../../routes/admin/(admin)/+page.server';
+  import type { GroupScene } from '@prisma/client';
 
   export let hidden = true
   export let scenes: SceneDataType[]
+  export let groups: GroupScene[]
+
+  $: groupsList = [{
+    value: null, name: 'Tất cả'
+  },...groups.map(v => ({
+    value: v.id,
+    name: v.name
+  }))]
+
+  let groupSelect: string | undefined
 
   let transitionParamsRight = {
     x: 320,
@@ -53,7 +64,8 @@
     }
     else {
       alertStore.addAlert({
-        type: 'error'
+        type: 'error',
+        description: result?.data?.error
       })
     }
 
@@ -85,15 +97,15 @@
     <div class="flex-grow min-h-0 py-6 border-y mb-6">
       <input type="hidden" name="sort" value={scenes.length}>
       <div class="">
-        <Label for="name" class="mb-2">Tiêu đề</Label>
+        <Label for="name" class="mb-2">Tiêu đề <span class="text-red-500">(*)</span></Label>
         <Input type="text" id="name" name="name" placeholder="Vd: Bán đảo Bắc Hà" required bind:value={name} />
       </div>
       <div class="mt-6">
-        <Label for="slug" class="mb-2">Slug</Label>
+        <Label for="slug" class="mb-2">Slug <span class="text-red-500">(*)</span></Label>
         <Input type="text" id="slug" name="slug" required bind:value={slug} />
       </div>
       <div class="mt-6">
-        <Label for="image" class="pb-2">Tải lên ảnh</Label>
+        <Label for="image" class="pb-2">Tải lên ảnh <span class="text-red-500">(*)</span></Label>
         <Fileupload accept="image/*" id="image" class="mb-2" name="image" required />
         <Helper>PNG, JPG (Tỷ lệ khung hình 2:1).</Helper>
       </div>
@@ -101,6 +113,10 @@
         <Label for="audio" class="pb-2">Âm thanh</Label>
         <Fileupload accept=".mp3,audio/*" id="audio" class="mb-2" name="audio" />
         <Helper>MP3, audio.</Helper>
+      </div>
+      <div class="mt-6">
+        <Label for="groupId" class="mb-2">Danh mục</Label>
+        <Select class="mt-2" name="groupId" items={groupsList} bind:value={groupSelect} />
       </div>
       <div class="mt-6">
         <Label for="description" class="mb-2">Nội dung</Label>

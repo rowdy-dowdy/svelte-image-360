@@ -31,6 +31,16 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+model GroupScene {
+  id                    String  @id @default(uuid())
+  name                  String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  scenes Scene[]
+}
+
 model Scene {
   id                    String  @id @default(uuid())
   url                   String
@@ -42,6 +52,9 @@ model Scene {
   audio                 String?
   description           String?
   sort Int?
+
+  groupId String?
+  group   GroupScene?  @relation(fields: [groupId], references: [id])
 
   infoHotspots InfoHotspots[]
   linkHotspots LinkHotspots[]

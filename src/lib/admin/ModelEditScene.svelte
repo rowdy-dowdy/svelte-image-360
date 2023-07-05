@@ -1,15 +1,26 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { applyAction, deserialize, enhance } from '$app/forms';
-  import { Drawer, Button, CloseButton, Label, Fileupload, Helper, Input, Progressbar, Textarea } from 'flowbite-svelte'
+  import { Drawer, Button, CloseButton, Label, Fileupload, Helper, Input, Progressbar, Textarea, Select } from 'flowbite-svelte'
   import { sineIn } from 'svelte/easing';
   import { invalidateAll } from '$app/navigation';
   import { alertStore } from '../../stores/alert';
   import type { SceneDataType } from '../../routes/admin/(admin)/+page.server';
   import slugify from "slugify";
+  import type { GroupScene } from '@prisma/client';
 
   export let hidden = true
   export let data: SceneDataType | null = null
+  export let groups: GroupScene[]
+
+  $: groupsList = [{
+    value: null, name: 'Tất cả'
+  },...groups.map(v => ({
+    value: v.id,
+    name: v.name
+  }))]
+
+  let groupSelect: string | null
   let name = ''
   let description: string = ''
   let audio: string | null = ''
@@ -23,6 +34,8 @@
       description = data.description || ''
       audio = data.audio
       slug = data.slug
+
+      groupSelect = data.groupId
     }
   }
 
@@ -115,6 +128,12 @@
         <Fileupload accept=".mp3,audio/*" id="audio" class="mb-2" name="audio" on:change={() => audio = null} />
         <Helper>MP3, audio.</Helper>
       </div>
+      
+      <div class="mt-6">
+        <Label for="groupId" class="mb-2">Danh mục</Label>
+        <Select class="mt-2" name="groupId" items={groupsList} bind:value={groupSelect} />
+      </div>
+
       <div class="mt-6">
         <Label for="description" class="mb-2">Nội dung</Label>
         <Textarea id="description" placeholder="Nội dung" rows="10" name="description" bind:value={description} />

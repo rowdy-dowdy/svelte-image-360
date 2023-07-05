@@ -28,7 +28,7 @@
 </svelte:head>
 
 {#if data.scenes.length > 0}
-  <Image360 data={data.scenes} settingMainAudio={data.settings.find(v => v.name == "main audio")}/>
+  <Image360 data={data.scenes} settingMainAudio={data.settings.find(v => v.name == "main audio")} groups={data.groups}/>
 {:else}
   <div class="fixed w-full h-screen top-0 left-0 grid place-items-center">
     Không có bối cảnh nào
@@ -40,7 +40,7 @@
 
     <div class="absolute w-full h-full left-0 top-0 flex flex-col items-center justify-center gap-8">
       <h3 class="text-3xl md:text-5xl lg:text-7xl font-semibold text-white text-center" style="text-shadow: 2px 7px 5px rgba(0,0,0,0.3), 
-      0px -4px 10px rgba(255,255,255,0.3);">Một chạm tới <span class="text-sky-600">Bắc Hà</span></h3>
+      0px -4px 10px rgba(255,255,255,0.3);">Một chạm tới <span class="text-sky-500">Bắc Hà</span></h3>
 
       <GradientButton size="lg" on:click={startTour}>Bắt đầu tham quan</GradientButton>
     </div>

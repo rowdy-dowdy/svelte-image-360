@@ -7,7 +7,7 @@
   import InfoHotSpotVideo from "$lib/web/InfoHotSpotVideo.svelte";
   import { hold } from "../../stores/pano.js";
   import type { SceneDataType } from "../../routes/admin/(admin)/+page.server.js";
-  import type { InfoHotspots, LinkHotspots, Setting } from "@prisma/client";
+  import type { GroupScene, InfoHotspots, LinkHotspots, Setting } from "@prisma/client";
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
   import { fade } from "svelte/transition";
@@ -15,9 +15,10 @@
   import LeftSide from "./LeftSide.svelte";
   import LinkHotspot2 from "./LinkHotspot2.svelte";
   import LinkHotspot3 from "./LinkHotspot3.svelte";
-  import { mobileCheck } from "./map.js";
+  import { isSafari } from "./map.js";
 
   export let data: SceneDataType[]
+  export let groups: GroupScene[]
 
   let hasMount: boolean = false
 
@@ -210,10 +211,10 @@
 
     scenes = data.map(function(data) {
       var urlPrefix = "./tiles"
-      var source = mobileCheck() 
+      var source = isSafari() 
         ? Marzipano.ImageUrlSource.fromString(data.url + "/mobile/{f}.jpg")
         : Marzipano.ImageUrlSource.fromString(data.url + "/{z}/{f}/{y}/{x}.jpg", { cubeMapPreviewUrl: data.url + "/preview.jpg" })
-      var geometry = mobileCheck() 
+      var geometry = isSafari() 
         ? new Marzipano.CubeGeometry([{ tileSize: data.faceSize / 2, size: data.faceSize / 2 }])
         : new Marzipano.CubeGeometry(data.levels)
 
@@ -273,7 +274,7 @@
   on:mouseup={panoEventMouseUp}
 />
 
-<LeftSide data={data} sceneSlug={sceneSlug} />
+<LeftSide data={data} sceneSlug={sceneSlug} groups={groups} />
 
 <BarOptions {settingMainAudio} autoRotateCheck={autoRotateCheck} on:toggleAutorotate={toggleAutorotate} currentScene={currentScene} />
 
@@ -281,13 +282,33 @@
   :global(#pano > canvas ~ div) {
     overflow: hidden !important;
   }
-  /* :global(#pano > canvas) {
+
+  :global(*) {
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-user-drag: none;
+    -webkit-touch-callout: none;
+    -ms-content-zooming: none;
+  }
+
+  :global(html, body) {
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  :global(#pano) {
     position: absolute;
     top: 0;
     left: 0;
-    margin: 0;
     width: 100%;
     height: 100%;
-    background-color: transparent;
-  } */
+  }
 </style>

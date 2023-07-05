@@ -93,6 +93,8 @@
       sceneAudio.load()
       toogleSceneAduio(true)
     }
+  } else {
+    toogleSceneAduio(false)
   }
 
   $: if($allowedPlayAduio) {

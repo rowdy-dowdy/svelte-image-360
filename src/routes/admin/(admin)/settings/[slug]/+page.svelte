@@ -1,0 +1,1 @@
+<p class="p-6">Chờ nâng cấp</p>

@@ -4,15 +4,18 @@ import type { InitialViewParametersType, LevelsType, SceneDataType } from "../ad
 export const load = async ({request}) => {
   // const userAgent = request.headers.get('user-agent')
   // console.log({userAgent})
-  const scenes = await db.scene.findMany({
-    include: {
-      infoHotspots: true,
-      linkHotspots: true
-    },
-    orderBy: {
-      sort: 'asc'
-    }
-  })
+  const [scenes, groups] = await Promise.all([
+    db.scene.findMany({
+      include: {
+        infoHotspots: true,
+        linkHotspots: true
+      },
+      orderBy: {
+        sort: 'asc'
+      }
+    }),
+    db.groupScene.findMany()
+  ])
 
   let scenesData: SceneDataType[] = scenes.map(v => {
     return {
@@ -24,5 +27,5 @@ export const load = async ({request}) => {
 
   const settings = db.setting.findMany()
 
-  return { scenes: scenesData, settings }
+  return { scenes: scenesData, settings, groups }
 }

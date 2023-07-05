@@ -152,7 +152,7 @@
   </div>
   <div class="flex-grow min-w-0 relative">
     {#if data.scenes.length > 0}
-      <AdminImage360 data={data.scenes} />
+      <AdminImage360 data={data.scenes} groups={data.groups} />
     {:else}
       <p class="w-full h-full grid place-items-center">
         Không có bối cảnh nào, hãy tạo bối cảnh mới
@@ -161,4 +161,4 @@
   </div>
 </div>
 
-<ModalAddScene bind:hidden={hiddenAddModal} bind:scenes={data.scenes} />
+<ModalAddScene bind:hidden={hiddenAddModal} bind:scenes={data.scenes} bind:groups={data.groups} />

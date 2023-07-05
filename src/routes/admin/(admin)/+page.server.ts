@@ -42,15 +42,18 @@ export type SceneDataType =  (Omit<Scene, 'levels' | 'initialViewParameters'> & 
 })
 
 export const load = async () => {
-  const scenes = await db.scene.findMany({
-    include: {
-      infoHotspots: true,
-      linkHotspots: true
-    },
-    orderBy: {
-      sort: 'asc'
-    }
-  })
+  const [scenes, groups] = await Promise.all([
+    db.scene.findMany({
+      include: {
+        infoHotspots: true,
+        linkHotspots: true
+      },
+      orderBy: {
+        sort: 'asc'
+      }
+    }),
+    db.groupScene.findMany()
+  ])
 
   let scenesData: SceneDataType[] = scenes.map(v => {
     return {
@@ -60,9 +63,7 @@ export const load = async () => {
     }
   })
 
-  console.log(scenesData)
-
-  return { scenes: scenesData }
+  return { scenes: scenesData, groups }
 }
 
 export const actions = {
@@ -74,6 +75,7 @@ export const actions = {
         sort = data.get('sort') as string,
         image = data.get('image') as File,
         audio = data.get('audio') as File,
+        groupId = data.get('groupId') as string,
         description = data.get('description') as string
 
       const imageSharp = sharp(await image.arrayBuffer(), { limitInputPixels: false })
@@ -81,21 +83,41 @@ export const actions = {
       let { width: w = 0, height: h = 0} = await imageSharp.metadata()
 
       if (w / h != 2) {
-        throw "Ảnh equirectangular chuyển thành cube map phải có tỷ lệ 2:1"
+        throw { errorText: "Ảnh equirectangular chuyển thành cube map phải có tỷ lệ 2:1"}
       }
 
-      if (w > 16384) {
+      if (w >= 24576) {
+        imageSharp.resize({width: 24576})
+        w = 24576
+        h = 12288
+      }
+      else if (w >= 20480) {
+        imageSharp.resize({width: 20480})
+        w = 20480
+        h = 10240
+      }
+      else if (w >= 16384) {
         imageSharp.resize({width: 16384})
         w = 16384
         h = 8192
       }
-      else if (w > 4096) {
+      else if (w >= 12288) {
+        imageSharp.resize({width: 12288})
+        w = 12288
+        h = 6144
+      }
+      else if (w >= 8192) {
+        imageSharp.resize({width: 8192})
+        w = 8192
+        h = 4096
+      }
+      else if (w >= 4096) {
         imageSharp.resize({width: 4096})
         w = 4096
         h = 2048
       }
       else {
-        throw "Ảnh có kich thước quá bé"
+        throw {errorText: "Ảnh có kich thước quá bé"}
       }
 
       // if (h % 2 != 0) {
@@ -231,15 +253,16 @@ export const actions = {
           ]`,
           description: description,
           audio: audioUrl,
+          groupId: groupId != "null" ? groupId : null,
           sort: +sort
         }
       })
 
       return { success: true, scene }
     }
-    catch(e) {
+    catch(e: any) {
       console.log({e})
-      return fail(400, { error: `Đã có lỗi xảy ra vui lòng thử lại sau` })
+      return fail(400, { error: e.errorText || `Đã có lỗi xảy ra vui lòng thử lại sau` })
     }
   },
 
@@ -288,6 +311,7 @@ export const actions = {
         audio = data.get('audio') as File,
         oldAduio = data.get('oldAduio') as string,
         id = data.get('id') as string,
+        groupId = data.get('groupId') as string,
         description = data.get('description') as string
 
       // save audio file
@@ -301,7 +325,8 @@ export const actions = {
       let dataUpdate: any = {
         name: name,
         description: description,
-        slug: slug
+        slug: slug,
+        groupId: groupId != "null" ? groupId : null
       }
 
       if (!oldAduio) {
@@ -442,7 +467,7 @@ export const actions = {
             type: type,
             title: title,
             description: description,
-            image: imageUrl ? `/storage/info-hotspots/${uuid}.${imageUrl.format}` : null,
+            // image: imageUrl ? `/storage/info-hotspots/${uuid}.${imageUrl.format}` : null,
             video: videoUrl
           }
         })

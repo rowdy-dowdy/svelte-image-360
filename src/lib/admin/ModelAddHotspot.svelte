@@ -38,7 +38,8 @@
     }
     else {
       alertStore.addAlert({
-        type: 'error'
+        type: 'error',
+        description: result?.data?.error
       })
     }
 

@@ -103,8 +103,8 @@ export const actions = {
             let temp = ''
 
             if ([".jpg", ".png", ".jpge", ".webp"].includes(mimetype)) {
-              await sharp(await value.arrayBuffer()).jpeg({ quality: 60, force: true, mozjpeg: true }).toFile(`./storage/settings/${uuid}.jpg`);
-              temp = `/storage/settings/${uuid}.jpg`
+              await sharp(await value.arrayBuffer()).png({ quality: 60, compressionLevel: 9, adaptiveFiltering: true, force: true }).toFile(`./storage/settings/${uuid}.png`);
+              temp = `/storage/settings/${uuid}.png`
             }
             else if ([".mp3"].includes(mimetype)) {
               await writeFile(`./storage/settings/${uuid}${mimetype}`, value.stream() as any)

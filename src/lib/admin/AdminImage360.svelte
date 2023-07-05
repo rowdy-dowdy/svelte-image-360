@@ -8,7 +8,7 @@
   import { hold } from "../../stores/pano.js";
   // import type { Scene } from "@prisma/client";
   import type { SceneDataType } from "../../routes/admin/(admin)/+page.server.js";
-  import type { LinkHotspots, InfoHotspots } from "@prisma/client";
+  import type { LinkHotspots, InfoHotspots, GroupScene } from "@prisma/client";
   import { page } from "$app/stores";
   import { goto, invalidateAll } from "$app/navigation";
   import { Button, Dropdown, DropdownDivider, DropdownItem, Indicator, Modal } from "flowbite-svelte";
@@ -25,6 +25,7 @@
   import LinkHotspot4 from "$lib/web/LinkHotspot4.svelte";
 
   export let data: SceneDataType[]
+  export let groups: GroupScene[]
 
   let viewerHTML: HTMLElement | null = null
   let viewer: Marzipano.Viewer | null = null
@@ -462,7 +463,7 @@
 <ModelEditHotspot bind:scenes={data} bind:valueEditHotspot={valueEditHotspot} bind:showFormModalEdit={showFormModalEdit} />
 
 <ModelDeleteScene bind:popupDelete={popupDeleteScene} bind:valueDelete={valueDeleteScene} />
-<ModelEditScene bind:hidden={hiddenPopupEditScene} bind:data={valueEditScene} />
+<ModelEditScene bind:hidden={hiddenPopupEditScene} bind:data={valueEditScene} bind:groups={groups} />
 
 <style>
   :global(#pano > canvas ~ div) {
