@@ -44,7 +44,7 @@
   <div transition:fade class="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-black/80 via-transparent to-black/80 pointer-events-none">
     <div class="w-full h-full flex items-center justify-center">
       <div class="w-3/4 max-w-3xl border-4 border-white">
-        <img src="{showSceneDemImage}" alt="" class="w-full h-full">
+        <img src="{showSceneDemImage}" alt="" class="w-full h-full" loading="lazy">
       </div>
     </div>
   </div>
@@ -95,7 +95,7 @@
               on:click={() => clickSceneTitle(item.slug)}
             >
               <div class="w-full aspect-[5/2.5] rounded-lg overflow-hidden">
-                <img src="{item.url}/mobile/f.jpg" alt="{item.name}" class="w-full h-full object-cover">
+                <img src="{item.url}/1/f/0/0.jpg" alt="{item.name}" class="w-full h-full object-cover" loading="lazy">
               </div>
               <!-- <div class="w-1 h-8 bg-white group-hover:bg-sky-600 {sceneSlug == item.slug ? '!bg-sky-600' : ''}"></div> -->
               <div class="text-center mt-2 text-sm md:text-base" style="text-shadow: rgb(0, 0, 0) 1px 1px 4px;">{item.name}</div>

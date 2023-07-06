@@ -78,7 +78,7 @@
                   <div class="px-2 mb-4" style="width: {item.details?.width / 12 * 100}%">
                     {#if item.value}
                       <div class="w-40 h-40 rounded border border-gray-900 overflow-hidden mb-2">
-                        <img src="{item.value}" alt="" class="w-full h-full object-cover">
+                        <img src="{item.value}" alt="" class="w-full h-full object-cover" loading="lazy">
                       </div>
                     {/if}
                     <Label for="{item.name}" class="mb-2 capitalize">{item.name}</Label>

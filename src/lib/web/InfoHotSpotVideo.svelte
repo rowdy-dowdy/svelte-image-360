@@ -18,7 +18,7 @@
       class="info-title { show ? 'show' : ''} { hover ? 'hover' : ''}"
       on:click={() => show = !show}
     >
-      <img src="./img/info.png" alt="" class="w-8 h-8 object-contain">
+      <img src="./img/info.png" alt="" class="w-8 h-8 object-contain" loading="lazy">
       <span class="text-white whitespace-nowrap font-semibold capitalize">{title}</span>
     </div>
     <span class="button-close {show ? 'show' : ''}" style=""

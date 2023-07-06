@@ -10,7 +10,7 @@
   <div class="w-full flex min-h-full h-max">
     <div class="flex w-full items-stretch overflow-x-hidden">
       <div class="hidden md:flex w-5/12 items-center justify-center bg-gray-50 px-8 py-8">
-        <img src="/images/bg-auth.png" alt="auth login" class="w-full" />
+        <img src="/images/bg-auth.png" alt="auth login" class="w-full" loading="lazy"/>
       </div>
     
       <div class="w-full px-8 md:w-7/12 md:px-20 py-8 bg-white">

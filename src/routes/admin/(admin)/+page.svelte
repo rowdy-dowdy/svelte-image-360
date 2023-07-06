@@ -59,8 +59,8 @@
 </script>
 
 <div class="w-full h-full flex items-stretch">
-  <div class="w-80 flex-none bg-white p-4 border-r flex flex-col space-y-6">
-    <div class="hidden relative md:block">
+  <div class="w-80 flex-none bg-white py-4 border-r flex flex-col space-y-6">
+    <div class="hidden relative md:block px-4">
       <div class="flex absolute inset-y-0 left-0 items-center pl-3 pointer-events-none">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 dark:text-white"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
       </div>
@@ -74,9 +74,9 @@
       {/if}
     </div>
 
-    <hr />
+    <hr class="mx-4" />
 
-    <div class="flex flex-col space-y-2" bind:this={listScene} on:sort={sort}>
+    <div class="flex flex-col space-y-2 overflow-y-auto px-4" bind:this={listScene} on:sort={sort}>
       {#each dataFilter as item, i (i)}
         <a href="?scene={item.id}" class="flex items-center space-x-4 rounded hover:bg-gray-200 px-4 py-2 group
           {$page.url.searchParams.get('scene') == item.id ? '!bg-gray-200' : ''}"
@@ -96,7 +96,7 @@
     </div>
 
     {#if checkSort}
-      <form action="?/sortScene" method="post"
+      <form action="?/sortScene" method="post" class="px-4"
         use:enhance={() => {
           loadingSaveSort = true
 
@@ -142,7 +142,7 @@
       </form>
     {/if}
 
-    <Button color="dark" outline on:click={() => hiddenAddModal = false}>
+    <Button color="dark" outline on:click={() => hiddenAddModal = false} class="mx-4">
       <span class="icon">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M19 11h-6V5h-2v6H5v2h6v6h2v-6h6z"></path></svg>
       </span>
