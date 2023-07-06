@@ -16,6 +16,7 @@
   import LinkHotspot2 from "./LinkHotspot2.svelte";
   import LinkHotspot3 from "./LinkHotspot3.svelte";
   import { isSafari } from "./map.js";
+  import LinkHotspot4 from "./LinkHotspot4.svelte";
 
   export let data: SceneDataType[]
   export let groups: GroupScene[]
@@ -95,6 +96,14 @@
     }
     else if (hotspot?.type == "3") {
       let toolbarComponent = new LinkHotspot3({
+			target: wrapper,
+        props: {
+          title: findSceneDataById(hotspot.target)?.name || ""
+        }
+      })
+    }
+    else if (hotspot?.type == "4") {
+      let toolbarComponent = new LinkHotspot4({
 			target: wrapper,
         props: {
           title: findSceneDataById(hotspot.target)?.name || ""
