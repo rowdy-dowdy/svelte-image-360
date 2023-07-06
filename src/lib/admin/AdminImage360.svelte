@@ -126,7 +126,7 @@
     }
     else if (hotspot?.type == "3") {
       let toolbarComponent = new LinkHotspot3({
-			target: wrapper,
+			  target: wrapper,
         props: {
           title: findSceneDataById(hotspot.target)?.name || ""
         }
@@ -134,7 +134,7 @@
     }
     else if (hotspot?.type == "4") {
       let toolbarComponent = new LinkHotspot4({
-			target: wrapper,
+			  target: wrapper,
         props: {
           title: findSceneDataById(hotspot.target)?.name || ""
         }
@@ -142,7 +142,7 @@
     }
     else {
       let toolbarComponent = new LinkHotspot({
-			target: wrapper,
+			  target: wrapper,
         props: {
           title: findSceneDataById(hotspot.target)?.name || "",
           image: `/storage/tiles/${hotspot.target}/demo.jpg`
@@ -169,12 +169,23 @@
   function createInfoHotspotElement(hotspot: InfoHotspots) {
     var wrapper = document.createElement('div')
 
-    let toolbarComponent = new InfoHotSpot({
-      target: wrapper,
-      props: {
-        title: hotspot?.title || ""
-      }
-    })
+    if (hotspot.type == "2") {
+      let toolbarComponent = new InfoHotSpot2({
+        target: wrapper,
+        props: {
+          title: hotspot?.title || "",
+          video: hotspot?.video || "",
+        }
+      })
+    }
+    else {
+      let toolbarComponent = new InfoHotSpot({
+        target: wrapper,
+        props: {
+          title: hotspot?.title || ""
+        }
+      })
+    }
 
     stopTouchAndScrollEventPropagation(wrapper)
 

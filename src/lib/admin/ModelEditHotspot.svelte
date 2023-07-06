@@ -95,6 +95,7 @@
   let title = ''
   let description = ''
   let imageUrl = ''
+  let video = ''
 
   const onChangeImage = (e: Event) => {
 
@@ -112,6 +113,7 @@
       title = (valueEditHotspot.value as InfoHotspots).title || ''
       description = (valueEditHotspot.value as InfoHotspots).description || ''
       imageUrl = (valueEditHotspot.value as InfoHotspots).image || ''
+      video = (valueEditHotspot.value as InfoHotspots).video || ''
     }
   }
 
@@ -197,7 +199,7 @@
           {#if selectTypes == "2"}
             <div>
               <Label for="video" class="pb-2">Video</Label>
-              <Fileupload id="video" name="video" class="mb-2" on:change={(e) => onChangeImage(e)} />
+              <Input type="text" id="video" name="video" placeholder="eg. NrkWdRHKfZE" bind:value={video} required />
             </div>
           {/if}
 

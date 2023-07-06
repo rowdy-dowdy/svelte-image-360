@@ -1,40 +1,21 @@
 <script lang="ts">
-  import { hold } from "../../stores/pano";
+  import { hold, videoShow } from "../../stores/pano";
   // export let position: "l" | "r" | "t" | "b" = "r"
   export let title: string
-  export let description: string
-  let show = false
+  export let video: string
 </script>
 
-<div class="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 {$hold ? '!pointer-events-none' : ''}">
-  <div class="info-title {show ? 'show' : ''}" on:click={() => show = !show}>
-    <div class="flex-none w-12 h-12 grid place-items-center">
-      <img src="./img/info.png" alt="" class="w-8 h-8 object-contain" loading="lazy">
-    </div>
-
-    <div class="flex-grow min-h-0 bg-white w-full p-2 flex flex-col space-y-1">
-      <div class="flex-grow min-h-0">
-        <img src="https://enic.vn/wp-content/uploads/2022/06/ava-tu-T03-1-600x600.jpeg" alt="" loading="lazy"
-        class="w-full h-full object-cover rounded">
-      </div>
-      <p class="flex-none font-semibold capitalize text-center">{title}</p>
+<div class="absolute top-0 left-0 w-0 h-0 cursor-pointer {$hold ? '!pointer-events-none' : ''}">
+  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 group">
+    <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-black/70 hover:bg-white/70
+      text-white grid place-items-center transition-colors hover:text-gray-800"
+      on:click|preventDefault|stopPropagation={() => $videoShow = video}  
+    >
+      <span class="material-symbols-outlined !text-xl md:!text-2xl left-0 top-0">
+        video_library
+      </span>
     </div>
   </div>
 </div>
-
 <style lang="postcss">
-  .info-title {
-    transition: all .3s ease-in-out .3s, border-radius .3s ease-in-out .3s;
-    @apply flex flex-col items-center w-12 h-12 bg-sky-900/80 rounded-[50%] 
-      cursor-pointer overflow-hidden;
-  }
-  .info-title:hover {
-    transition: all .3s, border-radius .3s ;
-    @apply w-52 h-56 rounded;
-  }
-
-  .info-title.show {
-    transition: all .3s, border-radius .3s ;
-    @apply w-52 h-56 rounded !bg-sky-900;
-  }
 </style>

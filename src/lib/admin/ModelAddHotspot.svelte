@@ -184,7 +184,7 @@
           {#if selectTypes == "2"}
             <div>
               <Label for="video" class="pb-2">Video</Label>
-              <Fileupload id="video" name="video" class="mb-2" />
+              <Input type="text" id="video" name="video" placeholder="eg. NrkWdRHKfZE" required />
             </div>
           {/if}
 

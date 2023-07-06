@@ -5,7 +5,7 @@
   import InfoHotSpot from "$lib/web/InfoHotSpot.svelte";
   import InfoHotSpot2 from "$lib/web/InfoHotSpot2.svelte";
   import InfoHotSpotVideo from "$lib/web/InfoHotSpotVideo.svelte";
-  import { hold } from "../../stores/pano.js";
+  import { hold, videoShow } from "../../stores/pano.js";
   import type { SceneDataType } from "../../routes/admin/(admin)/+page.server.js";
   import type { GroupScene, InfoHotspots, LinkHotspots, Setting } from "@prisma/client";
   import { page } from "$app/stores";
@@ -17,6 +17,7 @@
   import LinkHotspot3 from "./LinkHotspot3.svelte";
   import { isSafari } from "./map.js";
   import LinkHotspot4 from "./LinkHotspot4.svelte";
+  import VideoShow from "./VideoShow.svelte";
 
   export let data: SceneDataType[]
   export let groups: GroupScene[]
@@ -51,6 +52,21 @@
       targetPitch: currentScene.initialViewParameters.pitch,
       targetFov: Math.PI/2
     })
+  }
+
+  $: changeVideoShow($videoShow)
+
+  let autoRotateAfterVideoShow = autoRotateCheck
+  const changeVideoShow = (videoShow: string | null) => {
+    if (videoShow != null) {
+      autoRotateAfterVideoShow = autoRotateCheck
+      stopAutorotate()
+    }
+    else {
+      if (autoRotateAfterVideoShow) { 
+        startAutorotate()
+      }
+    }
   }
 
   // web
@@ -140,12 +156,23 @@
   function createInfoHotspotElement(hotspot: InfoHotspots) {
     var wrapper = document.createElement('div')
 
-    let toolbarComponent = new InfoHotSpot({
-      target: wrapper,
-      props: {
-        title: hotspot?.title || ""
-      }
-    })
+    if (hotspot.type == "2") {
+      let toolbarComponent = new InfoHotSpot2({
+        target: wrapper,
+        props: {
+          title: hotspot?.title || "",
+          video: hotspot?.video || "",
+        }
+      })
+    }
+    else {
+      let toolbarComponent = new InfoHotSpot({
+        target: wrapper,
+        props: {
+          title: hotspot?.title || ""
+        }
+      })
+    }
 
     stopTouchAndScrollEventPropagation(wrapper)
 
@@ -286,6 +313,8 @@
 <LeftSide data={data} sceneSlug={sceneSlug} groups={groups} />
 
 <BarOptions {settingMainAudio} autoRotateCheck={autoRotateCheck} on:toggleAutorotate={toggleAutorotate} currentScene={currentScene} />
+
+<VideoShow />
 
 <style lang="postcss">
   :global(#pano > canvas ~ div) {

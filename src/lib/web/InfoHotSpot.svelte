@@ -3,9 +3,6 @@
 
   // export let position: "l" | "r" | "t" | "b" = "r"
   export let title: string
-
-  let show = false
-  let hover = false
 </script>
 
 <div class="absolute top-0 left-0 w-0 h-0 cursor-pointer {$hold ? '!pointer-events-none' : ''}">

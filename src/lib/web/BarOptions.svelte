@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
   import { createEventDispatcher } from 'svelte';
-  import { allowedPlayAduio, showListScene } from "../../stores/pano";
+  import { allowedPlayAduio, showListScene, videoShow } from "../../stores/pano";
   import Anim from "./Anim.svelte";
   import { Progressbar } from "flowbite-svelte";
   import type { SceneDataType } from "../../routes/admin/(admin)/+page.server";
@@ -42,7 +42,7 @@
   let mainAudio: HTMLMediaElement | null = null
   let mainAudioCheck = false
 
-  const toogleMainAduio = (play?: boolean) => {
+  const toogleMainAudio = (play?: boolean) => {
     if (play != undefined) {
       play ? mainAudio?.play() : mainAudio?.pause()
       mainAudioCheck = play
@@ -65,7 +65,7 @@
   let sceneAudioDuration = 0
   let sceneAudioEnded = false
 
-  const toogleSceneAduio = (play?: boolean) => {
+  const toogleSceneAudio = (play?: boolean) => {
     if (play != undefined) {
       play ? sceneAudio?.play() : sceneAudio?.pause()
       sceneAudioCheck = play
@@ -91,21 +91,39 @@
       // sceneAudio.pause()
       sceneAudio.src = currentScene.audio
       sceneAudio.load()
-      toogleSceneAduio(true)
+      toogleSceneAudio(true)
     }
   } else {
-    toogleSceneAduio(false)
+    toogleSceneAudio(false)
   }
 
   $: if($allowedPlayAduio) {
-    toogleMainAduio(true)
-    toogleSceneAduio(true)
+    toogleMainAudio(true)
+    toogleSceneAudio(true)
   }
 
   let showDescription = false
 
-  const toogleListScene = () => {
-    $showListScene = !$showListScene
+  $: changeVideoShow($videoShow)
+
+  let mainAudioAfterVideoShow = true
+  let sceneAudioAfterVideoShow = true
+  const changeVideoShow = (videoShow: string | null) => {
+    if (videoShow != null) {
+      mainAudioAfterVideoShow = mainAudioCheck
+      sceneAudioAfterVideoShow = sceneAudioCheck
+      toogleMainAudio(false)
+      toogleSceneAudio(false)
+    }
+    else {
+      console.log(mainAudioAfterVideoShow, sceneAudioAfterVideoShow)
+      if (mainAudioAfterVideoShow) { 
+        toogleMainAudio(true)
+      }
+      if (sceneAudioAfterVideoShow) { 
+        toogleSceneAudio(true)
+      }
+    }
   }
 
   onMount(() => {
@@ -121,8 +139,8 @@
         sceneAudio.load()
       }
 
-      toogleMainAduio(true)
-      // toogleSceneAduio(true)
+      toogleMainAudio(true)
+      // toogleSceneAudio(true)
     }
   })
 
@@ -135,8 +153,9 @@
 </script>
 
 <audio src="{settingMainAudio?.value}" bind:this={mainAudio} class="sr-only" loop></audio>
-<audio bind:this={sceneAudio} bind:currentTime={sceneAudioTime} 
-  bind:duration={sceneAudioDuration} bind:ended={sceneAudioEnded} class="sr-only"></audio>
+<audio bind:this={sceneAudio} bind:ended={sceneAudioEnded} class="sr-only"></audio>
+<!-- <audio bind:this={sceneAudio} bind:currentTime={sceneAudioTime} 
+  bind:duration={sceneAudioDuration} bind:ended={sceneAudioEnded} class="sr-only"></audio> -->
 
 <div class="fixed right-0 bottom-0">
   <div class="flex flex-col">
@@ -145,42 +164,17 @@
         <Anim src="/lotties/hello.json" />
       </div>
       <button class="absolute left-[43%] top-[60%] md:left-[48%] md:top-[65%] text-white" 
-        on:click|preventDefault={() => toogleSceneAduio()}
+        on:click|preventDefault={() => toogleSceneAudio()}
       >
         <span class="material-symbols-outlined">
           {sceneAudioCheck ? 'mic' : 'mic_off'}
         </span>
       </button>
     </div>
-    <div class="w-full px-4 pb-2">
+    <!-- <div class="w-full px-4 pb-2">
       <Progressbar color="green" progress={((sceneAudioTime / sceneAudioDuration) * 100).toString() || "0"} size="h-1.5" />
-    </div>
+    </div> -->
   </div>
-  <!-- <div class="relative w-20 md:w-32">
-    <div class="absolute w-40 h-40 right-0 bottom-0 rounded-full bg-gradient-to-br from-sky-300 to-teal-400
-      translate-x-[10%] translate-y-[10%]"></div>
-    <div class="absolute right-0 bottom-2">
-      <div class="flex flex-col">
-        <div class="relative w-20 h-20 md:w-32 md:h-32 right-0 bottom-0 overflow-hidden cursor-pointer"
-          on:click={() => toogleSceneAduio()}
-        >
-          <div class="absolute w-[200%] h-[200%] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-            <Anim src="/lotties/hello.json" />
-          </div>
-          <div class="icon w-[20%] p-1 pt-2 absolute left-[55%] -translate-x-1/2 bottom-[16%] bg-[#4691fb] text-white">
-            {#if sceneAudioCheck}
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M16 21c3.527-1.547 5.999-4.909 5.999-9S19.527 4.547 16 3v2c2.387 1.386 3.999 4.047 3.999 7S18.387 17.614 16 19v2z"></path><path d="M16 7v10c1.225-1.1 2-3.229 2-5s-.775-3.9-2-5zM4 17h2.697l5.748 3.832a1.004 1.004 0 0 0 1.027.05A1 1 0 0 0 14 20V4a1 1 0 0 0-1.554-.832L6.697 7H4c-1.103 0-2 .897-2 2v6c0 1.103.897 2 2 2zm0-8h3c.033 0 .061-.016.093-.019a1.027 1.027 0 0 0 .38-.116c.026-.015.057-.017.082-.033L12 5.868v12.264l-4.445-2.964c-.025-.017-.056-.02-.082-.033a.986.986 0 0 0-.382-.116C7.059 15.016 7.032 15 7 15H4V9z"></path></svg>
-            {:else}
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="m21.707 20.293-2.023-2.023A9.566 9.566 0 0 0 21.999 12c0-4.091-2.472-7.453-5.999-9v2c2.387 1.386 3.999 4.047 3.999 7a8.113 8.113 0 0 1-1.672 4.913l-1.285-1.285C17.644 14.536 18 13.19 18 12c0-1.771-.775-3.9-2-5v7.586l-2-2V4a1 1 0 0 0-1.554-.832L7.727 6.313l-4.02-4.02-1.414 1.414 18 18 1.414-1.414zM12 5.868v4.718L9.169 7.755 12 5.868zM4 17h2.697l5.748 3.832a1.004 1.004 0 0 0 1.027.05A1 1 0 0 0 14 20v-1.879l-2-2v2.011l-4.445-2.964c-.025-.017-.056-.02-.082-.033a.986.986 0 0 0-.382-.116C7.059 15.016 7.032 15 7 15H4V9h.879L3.102 7.223A1.995 1.995 0 0 0 2 9v6c0 1.103.897 2 2 2z"></path></svg>
-            {/if}
-          </div>
-        </div>
-        <div class="w-full px-4">
-          <Progressbar progress={((sceneAudioTime / sceneAudioDuration) * 100).toString() || "0"} size="h-1.5" />
-        </div>
-      </div>
-    </div>
-  </div> -->
 </div>
 
 <div class="fixed top-0 right-0 pointer-events-none p-2 flex items-start space-x-4">
@@ -229,7 +223,7 @@
       {/if}
     </button>
     
-    <button class="bar-icon" on:click={() => toogleMainAduio()}>
+    <button class="bar-icon" on:click={() => toogleMainAudio()}>
       {#if mainAudioCheck}
         <span class="material-symbols-outlined">
           volume_up

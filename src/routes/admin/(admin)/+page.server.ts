@@ -409,7 +409,7 @@ export const actions = {
           direction = data.get('direction') as string,
           hotspotType = data.get('hotspotType') as string,
           type = data.get('type') as string,
-          video = data.get('video') as File | null | undefined,
+          video = data.get('video') as string,
           title = data.get('title') as string,
           description = data.get('description') as string
 
@@ -446,17 +446,17 @@ export const actions = {
         //     })
         // }
 
-        if (video && video?.size > 0) {
+        // if (video && video?.size > 0) {
 
-          if (!existsSync(`./storage/info-hotspots`)) {
-            mkdirSync(`./storage/info-hotspots`, { recursive: true })
-          }
+        //   if (!existsSync(`./storage/info-hotspots`)) {
+        //     mkdirSync(`./storage/info-hotspots`, { recursive: true })
+        //   }
 
-          let mimetype = path.extname(video.name)
+        //   let mimetype = path.extname(video.name)
           
-          await fs.writeFile(`./storage/info-hotspots/${uuid}${mimetype}`, video.stream() as any)
-          videoUrl = `/storage/info-hotspots/${uuid}${mimetype}`
-        }
+        //   await fs.writeFile(`./storage/info-hotspots/${uuid}${mimetype}`, video.stream() as any)
+        //   videoUrl = `/storage/info-hotspots/${uuid}${mimetype}`
+        // }
 
         const infoHotspot = await db.infoHotspots.create({
           data: {
@@ -468,7 +468,7 @@ export const actions = {
             title: title,
             description: description,
             // image: imageUrl ? `/storage/info-hotspots/${uuid}.${imageUrl.format}` : null,
-            video: videoUrl
+            video: video
           }
         })
       }
@@ -523,6 +523,7 @@ export const actions = {
           hotspotType = data.get('hotspotType') as string,
           type = data.get('type') as string,
           image = data.get('image') as File | null | undefined,
+          video = data.get('video') as string,
           title = data.get('title') as string,
           description = data.get('description') as string
 
@@ -567,7 +568,8 @@ export const actions = {
             type: type,
             title: title,
             description: description,
-            image: imageUrl ? `/storage/info-hotspots/${uuid}.${imageUrl.format}` : null
+            image: imageUrl ? `/storage/info-hotspots/${uuid}.${imageUrl.format}` : null,
+            video: video
           }
         })
       }
