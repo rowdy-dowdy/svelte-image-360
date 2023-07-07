@@ -7,10 +7,12 @@
 <div class="absolute top-0 left-0 w-0 h-0 cursor-pointer {$hold ? '!pointer-events-none' : ''}">
   <!-- <div class="hidden absolute top-0 bg-white/50 rounded-full left-0 w-full h-full group-hover:block group-hover:animate-ping"></div> -->
   <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 group">
-    <div class="relative w-14 h-14 md:w-20 md:h-20 rounded-full transition-all duration-500 hover:w-20 hover:h-20 md:hover:w-32 md:hover:h-32 group shadow-inner">
+    <div class="relative w-10 h-10 md:w-14 md:h-14 rounded-full transition-all duration-500 group-hover:w-20 group-hover:h-20 md:group-hover:w-32 md:group-hover:h-32 group shadow-inner">
       <div class="ball bubble !absolute top-0 left-0">
-        <img src="/logo.png" alt="" class="w-full h-full opacity-100 group-hover:opacity-0 transition-all duration-500" loading="lazy">
-        <img src={image} alt="" class="absolute top-0 left-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-all duration-500 rounded-full" loading="lazy">
+        <img src="/logo2.png" alt="" class="w-full h-full opacity-100 group-hover:opacity-0 transition-all 
+          duration-500 rounded-full" loading="lazy">
+        <img src={image} alt="" class="absolute top-0 left-0 w-full h-full object-cover rounded-full
+          opacity-0 group-hover:opacity-100 transition-all duration-500" loading="lazy">
       </div>
     </div>
 
@@ -23,7 +25,8 @@
 <style lang="postcss">
   .title {
     text-shadow: rgb(0, 0, 0) 1px 1px 4px;
-    @apply absolute left-1/2 top-full -translate-x-1/2 px-4 py-1 transition-all duration-500 rounded whitespace-nowrap text-white group-hover:bg-stone-700;
+    @apply absolute left-1/2 top-full -translate-x-1/2 px-4 py-1 -mt-1 transition-all duration-500 
+      rounded whitespace-nowrap text-white group-hover:bg-stone-700 group-hover:mt-2;
   }
 
   .ball {
@@ -66,8 +69,8 @@
  
   .ball.bubble {
     background: radial-gradient(circle at 50% 55%, rgba(240, 245, 255, 0.9), rgba(240, 245, 255, 0.9) 40%, rgba(225, 238, 255, 0.8) 60%, rgba(43, 130, 255, 0.4));
-    -webkit-animation: bubble-anim 2s ease-out infinite;
-    animation: bubble-anim 2s ease-out infinite; 
+    /* -webkit-animation: bubble-anim 2s ease-out infinite;
+    animation: bubble-anim 2s ease-out infinite;  */
   }
   .ball.bubble:before {
     -webkit-filter: blur(0);
@@ -83,55 +86,37 @@
     background: radial-gradient(circle at 50% 80%, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0) 74%, white 80%, white 84%, rgba(255, 255, 255, 0) 100%); 
   }
 
-@-webkit-keyframes bubble-anim {
-  0% {
-    -webkit-transform: scale(1);
-    transform: scale(1); }
+  .group:hover .ball.bubble {
+    -webkit-animation: bubble-anim 1.5s ease-out;
+    animation: bubble-anim 1.5s ease-out; 
+  }
 
-  20% {
-    -webkit-transform: scaleY(0.95) scaleX(1.05);
-    transform: scaleY(0.95) scaleX(1.05); }
+  @keyframes bubble-anim {
+    0% {
+      -webkit-transform: scale(1);
+      transform: scale(1); }
 
-  48% {
-    -webkit-transform: scaleY(1.1) scaleX(0.9);
-    transform: scaleY(1.1) scaleX(0.9); }
+    20% {
+      -webkit-transform: scaleY(0.95) scaleX(1.05);
+      transform: scaleY(0.95) scaleX(1.05); }
 
-  68% {
-    -webkit-transform: scaleY(0.98) scaleX(1.02);
-    transform: scaleY(0.98) scaleX(1.02); }
+    48% {
+      -webkit-transform: scaleY(1.1) scaleX(0.9);
+      transform: scaleY(1.1) scaleX(0.9); }
 
-  80% {
-    -webkit-transform: scaleY(1.02) scaleX(0.98);
-    transform: scaleY(1.02) scaleX(0.98); }
+    68% {
+      -webkit-transform: scaleY(0.98) scaleX(1.02);
+      transform: scaleY(0.98) scaleX(1.02); }
 
-  97%, 100% {
-    -webkit-transform: scale(1);
-    transform: scale(1); } }
+    80% {
+      -webkit-transform: scaleY(1.02) scaleX(0.98);
+      transform: scaleY(1.02) scaleX(0.98); }
 
-@keyframes bubble-anim {
-  0% {
-    -webkit-transform: scale(1);
-    transform: scale(1); }
-
-  20% {
-    -webkit-transform: scaleY(0.95) scaleX(1.05);
-    transform: scaleY(0.95) scaleX(1.05); }
-
-  48% {
-    -webkit-transform: scaleY(1.1) scaleX(0.9);
-    transform: scaleY(1.1) scaleX(0.9); }
-
-  68% {
-    -webkit-transform: scaleY(0.98) scaleX(1.02);
-    transform: scaleY(0.98) scaleX(1.02); }
-
-  80% {
-    -webkit-transform: scaleY(1.02) scaleX(0.98);
-    transform: scaleY(1.02) scaleX(0.98); }
-
-  97%, 100% {
-    -webkit-transform: scale(1);
-    transform: scale(1); } }
+    97%, 100% {
+      -webkit-transform: scale(1);
+      transform: scale(1); 
+    } 
+  }
 </style>
 
 

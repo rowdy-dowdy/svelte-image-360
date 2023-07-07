@@ -15,7 +15,16 @@
         video_library
       </span>
     </div>
+
+    {#if title != ""}
+      <div class="absolute title text-sm md:text-base">{title}</div>
+    {/if}
   </div>
 </div>
 <style lang="postcss">
+  .title {
+    text-shadow: rgb(0, 0, 0) 1px 1px 4px;
+    @apply absolute left-1/2 top-full -translate-x-1/2 px-4 py-1 -mt-1 transition-all duration-500 
+      rounded whitespace-nowrap text-white group-hover:bg-stone-700 group-hover:mt-2;
+  }
 </style>
