@@ -169,7 +169,8 @@
       let toolbarComponent = new InfoHotSpot({
         target: wrapper,
         props: {
-          title: hotspot?.title || ""
+          title: hotspot?.title || "",
+          description: hotspot?.description || ""
         }
       })
     }

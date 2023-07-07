@@ -181,7 +181,12 @@
             <Input type="text" id="tile" name="title" placeholder="Tiêu đề" required />
           </div>
 
-          {#if selectTypes == "2"}
+          {#if selectTypes == "1"}
+            <div>
+              <Label for="description" class="mb-2">Mô tả</Label>
+              <Input type="text" id="tile" name="description" placeholder="Mô tả" required />
+            </div>
+          {:else if selectTypes == "2"}
             <div>
               <Label for="video" class="pb-2">Video</Label>
               <Input type="text" id="video" name="video" placeholder="eg. NrkWdRHKfZE" required />

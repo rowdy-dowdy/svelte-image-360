@@ -4,4 +4,15 @@ export const mobileCheck = () =>  {
   return check;
 }
 
-export const isSafari = () => /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+export const isSafari = () => {
+  return [
+    'iPad Simulator',
+    'iPhone Simulator',
+    'iPod Simulator',
+    'iPad',
+    'iPhone',
+    'iPod'
+  ].includes(navigator.platform)
+  // iPad on iOS 13 detection
+  || (navigator.userAgent.includes("Mac") && "ontouchend" in document)
+}

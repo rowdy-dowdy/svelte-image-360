@@ -1,14 +1,14 @@
 <script lang="ts">
-  import Image360 from '$lib/web/Image360.svelte';
+  // import Image360 from '$lib/web/Image360.svelte';
   import { GradientButton } from 'flowbite-svelte';
-  import { fade, fly, scale } from 'svelte/transition';
-  import type { SceneDataType } from '../admin/(admin)/+page.server';
-  import { page } from "$app/stores";
-  import { goto } from '$app/navigation';
+  import { scale } from 'svelte/transition';
+  // import type { SceneDataType } from '../admin/(admin)/+page.server';
+  // import { page } from "$app/stores";
+  // import { goto } from '$app/navigation';
   import { allowedPlayAduio } from '../../stores/pano';
 
   export let data
-  let start = false
+  let start = true
 
   // if (data.scenes.length > 0 ) {
   //   if (!$page.url.searchParams.get('scene'))
@@ -28,7 +28,11 @@
 </svelte:head>
 
 {#if data.scenes.length > 0}
-  <Image360 data={data.scenes} settingMainAudio={data.settings.find(v => v.name == "main audio")} groups={data.groups}/>
+  {#await import('$lib/web/Image360.svelte')}
+    loading...
+  {:then Image360}
+    <Image360.default data={data.scenes} settingMainAudio={data.settings.find(v => v.name == "main audio")} groups={data.groups}/>
+  {/await}
 {:else}
   <div class="fixed w-full h-screen top-0 left-0 grid place-items-center">
     Không có bối cảnh nào
@@ -46,8 +50,6 @@
     </div>
   </div>
 {/if}
-
-<slot />
 
 <style>
   :global(html, body) {
