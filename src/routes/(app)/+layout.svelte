@@ -1,5 +1,5 @@
 <script lang="ts">
-  // import Image360 from '$lib/web/Image360.svelte';
+  import Image360 from '$lib/web/Image360.svelte';
   import { GradientButton } from 'flowbite-svelte';
   import { scale } from 'svelte/transition';
   // import type { SceneDataType } from '../admin/(admin)/+page.server';
@@ -27,17 +27,19 @@
   <style> @-ms-viewport { width: device-width; } </style>
 </svelte:head>
 
-{#if data.scenes.length > 0}
-  {#await import('$lib/web/Image360.svelte')}
+<!-- {#if data.scenes.length > 0} -->
+  <!-- {#await import('$lib/web/Image360.svelte')}
     loading...
   {:then Image360}
     <Image360.default data={data.scenes} settingMainAudio={data.settings.find(v => v.name == "main audio")} groups={data.groups}/>
-  {/await}
-{:else}
+  {/await} -->
+  <Image360 data={data.scenes} settingMainAudio={data.settings.find(v => v.name == "main audio")} groups={data.groups}/>
+<!-- {:else}
   <div class="fixed w-full h-screen top-0 left-0 grid place-items-center">
     Không có bối cảnh nào
   </div>
-{/if}
+{/if} -->
+
 {#if !start}
   <div transition:scale={{start: 2, duration: 700, opacity: 0}} class="fixed w-full h-screen top-0 left-0 z-[100] bg-white">
     <img src="{data.settings.find(v => v.name == "banner")?.value}" class="w-full h-full object-cover" loading="lazy">
@@ -50,6 +52,8 @@
     </div>
   </div>
 {/if}
+
+<slot />
 
 <style>
   :global(html, body) {

@@ -18,12 +18,24 @@ async function main() {
       return prisma.groupSetting.create({
         data: {
           name: v,
+          settings: {
+            create: [
+              {
+                name: 'banner',
+                field: 'image',
+              },
+              {
+                name: 'main audio',
+                field: 'audio',
+              }
+            ]
+          }
         }
       })
     })
   )
   
-  console.log({ user })
+  console.log({ user, groupSettings })
 }
 
 main()

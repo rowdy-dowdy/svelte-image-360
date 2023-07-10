@@ -15,6 +15,11 @@ const config = {
 		adapter: adapter()
 	},
 
+  compilerOptions: {
+    // customElement: true
+    // other compiler options ...
+  },
+
   onwarn: (warning, handler) => {
     if (warning.code.startsWith('a11y-')) {
       return;

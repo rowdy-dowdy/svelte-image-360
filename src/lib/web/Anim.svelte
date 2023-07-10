@@ -3,9 +3,8 @@
   export let src: string
 </script>
 
-<lottie-player
-  id="firstLottie"               
-  src={src}
+<lottie-player             
+  src="{src}"
   autoplay
   loop
 />
