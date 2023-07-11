@@ -138,7 +138,7 @@ export const actions = {
           initialViewParameters: `{
             "pitch": 0,
             "yaw": 0,
-            "zoom": 0.5
+            "zoom": 50
           }`,
           url: `/storage/tiles/${uuid}`,
           levels: `[]`,

@@ -27,7 +27,7 @@
   </p>
 
   <Editor
-    scriptSrc={'/tinymce/tinymce.min.js'}
+    scriptSrc={'/js/tinymce/tinymce.min.js'}
     bind:value={value}
     conf={{
       height: 300,
