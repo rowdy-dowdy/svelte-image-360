@@ -18,11 +18,12 @@
   import { isSafari } from "./map.js";
   import LinkHotspot4 from "./LinkHotspot4.svelte";
   import VideoShow from "./VideoShow.svelte";
-  import { Viewer } from "@photo-sphere-viewer/core";
+  import { Viewer, utils } from "@photo-sphere-viewer/core";
   import { EquirectangularTilesAdapter } from "@photo-sphere-viewer/equirectangular-tiles-adapter";
   import { MarkersPlugin } from "@photo-sphere-viewer/markers-plugin";
   import "@photo-sphere-viewer/core/index.css"
   import "@photo-sphere-viewer/markers-plugin/index.css"
+  import { AutorotatePlugin } from "@photo-sphere-viewer/autorotate-plugin";
 
   export let data: SceneDataType[]
   export let groups: GroupScene[]
@@ -240,6 +241,15 @@
   //   }
   // }
 
+  const animatedValues = {
+    pitch: { start: -Math.PI / 2, end: 0.2 },
+    yaw: { start: Math.PI, end: 0 },
+    zoom: { start: 0, end: 50 },
+    fisheye: { start: 2, end: 0 },
+  };
+
+  const baseUrl = 'https://photo-sphere-viewer-data.netlify.app/assets/';
+
   onMount(() => {
     isMount = true
 
@@ -247,96 +257,83 @@
     /// Create viewer.
     viewer = new Viewer({
       container: viewerHTML,
-      // adapter: EquirectangularTilesAdapter,
+      adapter: EquirectangularTilesAdapter,
       navbar: false,
       plugins: [
+        [AutorotatePlugin, {
+          autostartDelay: null,
+          autostartOnIdle: true,
+          autorotatePitch: animatedValues.pitch.end,
+          autorotateSpeed: '0.5rpm',
+        }],
         MarkersPlugin
       ],
+
+      defaultPitch: animatedValues.pitch.start,
+      defaultYaw: animatedValues.yaw.start,
+      defaultZoomLvl: animatedValues.zoom.start,
+      fisheye: animatedValues.fisheye.start,
+
       touchmoveTwoFingers: true,
-      mousewheelCtrlKey: true,
-      panorama: 'tiles/1.jpg'
-      // panorama: {
-      //   width: 6656,
-      //   cols: 16,
-      //   rows: 8,
-      //   baseUrl: `tiles/low.jpg`,
-      //   tileUrl: (col: number, row: number) => {
-      //     return `panorama_${col}_${row}.jpg`;
-      //   },
-      // },
+      panorama: {
+        width: data[0].faceSize,
+        cols: 16,
+        rows: 8,
+        baseUrl: `/storage/tiles/${data[0].id}/low.jpg`,
+        tileUrl: (col: number, row: number) => {
+          return `/storage/tiles/${data[0].id}/${row}_${col}.jpg`
+        },
+      },
     })
 
     const markersPlugin: MarkersPlugin = viewer.getPlugin(MarkersPlugin);
 
-    viewer.addEventListener('click', ({ data }) => {
+    viewer.addEventListener('dblclick', ({ data }) => {
       var wrapper = document.createElement('div')
-      var child = document.createElement('div')
-      
-      child.style.width = '100px'
-      child.style.height = '100px'
-      child.style.background = 'red'
-      
-
-      child.addEventListener('click', () => {
-        console.log('ahhi')
+    
+      new LinkHotspot2({
+        target: wrapper,
+        props: {
+          title: "Đồng Bằng sông Cửu Long"
+        }
       })
 
-      wrapper.appendChild(child)
+      markersPlugin.addMarker({
+        id: '#' + Math.random(),
+        position: { yaw: data.yaw, pitch: data.pitch },
+        html: wrapper.innerHTML,
+        size: { width: 0, height: 0 },
+        anchor: 'bottom center',
+        // tooltip: 'Generated pin',
+      });
+    });
 
-      console.log(wrapper.innerHTML)
-      
+    let autorotate = viewer.getPlugin(AutorotatePlugin) as any;
 
-        markersPlugin.addMarker({
-            id: '#' + Math.random(),
-            position: { yaw: data.yaw, pitch: data.pitch },
-            html: wrapper.innerHTML,
+    viewer.addEventListener("ready", intro, { once: true });
 
-            size: { width: 32, height: 32 },
-            anchor: 'bottom center',
-            tooltip: 'Generated pin',
-            data: {
-              generated: true,
-            },
+    function intro() {
+      autorotate?.stop();
+      markersPlugin?.hideAllMarkers()
+
+      new utils.Animation({
+        properties: animatedValues,
+        duration: 2500,
+        easing: "inOutQuad",
+        onTick: (properties) => {
+          viewer?.setOption("fisheye", properties.fisheye);
+          viewer?.rotate({ yaw: properties.yaw, pitch: properties.pitch });
+          viewer?.zoom(properties.zoom);
+        },
+      }).then(() => {
+        autorotate?.setOptions({
+          autostartDelay: 0,
+          autostartOnIdle: true,
         });
-});
-
-    // scenes = data.map(function(data) {
-    //   var urlPrefix = "./tiles"
-    //   var source = isSafari() 
-    //     ? Marzipano.ImageUrlSource.fromString(data.url + "/mobile/{f}.jpg")
-    //     : Marzipano.ImageUrlSource.fromString(data.url + "/{z}/{f}/{y}/{x}.jpg", { cubeMapPreviewUrl: data.url + "/preview.jpg" })
-    //   var geometry = isSafari() 
-    //     ? new Marzipano.CubeGeometry([{ tileSize: data.faceSize / 2, size: data.faceSize / 2 }])
-    //     : new Marzipano.CubeGeometry(data.levels)
-
-    //   var limiter = Marzipano.RectilinearView.limit.traditional(data.faceSize, 100*Math.PI/180, 120*Math.PI/180)
-    //   var view = new Marzipano.RectilinearView(data.initialViewParameters, limiter)
-
-    //   var scene = viewer!.createScene({
-    //     source: source,
-    //     geometry: geometry,
-    //     view: view,
-    //     pinFirstLevel: true
-    //   })
-
-    //   // Create link hotspots.
-    //   data.linkHotspots.forEach(function(hotspot) {
-    //     var element = createLinkHotspotElement(hotspot)
-    //     scene?.hotspotContainer().createHotspot(element, { yaw: hotspot.yaw, pitch: hotspot.pitch })
-    //   })
-
-    //   // Create info hotspots.
-    //   data.infoHotspots.forEach(function(hotspot) {
-    //     var element = createInfoHotspotElement(hotspot)
-    //     scene?.hotspotContainer().createHotspot(element, { yaw: hotspot.yaw, pitch: hotspot.pitch })
-    //   })
-
-    //   return {
-    //     data: data,
-    //     scene: scene,
-    //     view: view
-    //   }
-    // })
+        autorotate?.start();
+        markersPlugin?.showAllMarkers()
+      });
+    }
 
     // if (!sceneSlug) {
     //   goto(`/${scenes[0].data.slug}`)
@@ -382,5 +379,10 @@
   }
   :global(.psv-container) {
     background: none !important;
+  }
+
+  :global(.psv-panel-content) {
+    @apply backdrop-blur-md;
+    all: unset;
   }
 </style>

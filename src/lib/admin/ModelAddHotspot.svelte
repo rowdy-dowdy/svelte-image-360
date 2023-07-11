@@ -6,11 +6,14 @@
   import { removeAccents } from "$lib/utils/hepler";
   import { page } from "$app/stores";
   import { alertStore } from "../../stores/alert";
+  import RichText from "./form-field/RichText.svelte";
 
+  export let sceneId: string | null
   export let showFormModalAdd: boolean
   export let coordinatesAdd: { yaw: number, pitch: number }
   export let scenes: SceneDataType[]
 
+  let description: string = ''
   let loading = false
 
   const handleSubmit = async (e: Event) => {
@@ -20,7 +23,8 @@
     let data: FormData = new FormData(e.target as HTMLFormElement)
     data.append('yaw', coordinatesAdd.yaw.toString())
     data.append('pitch', coordinatesAdd.pitch.toString())
-    data.append('sceneId', $page.url.searchParams.get('scene') || "0")
+    data.append('sceneId', sceneId || "0")
+    data.append('description', description)
 
     const response = await fetch("/admin?/createHotspot", {
       method: 'POST',
@@ -39,6 +43,7 @@
     else {
       alertStore.addAlert({
         type: 'error',
+        //@ts-ignore
         description: result?.data?.error
       })
     }
@@ -93,7 +98,7 @@
 
 </script>
 
-<Modal id="form-modal" bind:open={showFormModalAdd} size="sm" autoclose={false} class="w-full">
+<Modal id="form-modal" bind:open={showFormModalAdd} size="md" autoclose={false} class="w-full">
   <form class="flex flex-col" method="post" on:submit|preventDefault={handleSubmit}>
     <h3 class="mb-4 text-xl font-medium text-gray-900 dark:text-white">Thêm mới điểm nóng</h3>
     <Tabs style="underline" >
@@ -182,10 +187,7 @@
           </div>
 
           {#if selectTypes == "1"}
-            <div>
-              <Label for="description" class="mb-2">Mô tả</Label>
-              <Input type="text" id="tile" name="description" placeholder="Mô tả" required />
-            </div>
+            <RichText id="description" name="Nội dung" bind:value={description} />
           {:else if selectTypes == "2"}
             <div>
               <Label for="video" class="pb-2">Video</Label>

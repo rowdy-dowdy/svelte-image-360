@@ -2,7 +2,7 @@ export const ssr = false;
 
 import { fail } from '@sveltejs/kit'
 import * as fs from 'fs/promises'
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "fs"
+import { existsSync, linkSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "fs"
 import sharp from "sharp"
 import AdmZip from "adm-zip"
 import {tmpdir, type} from 'os'
@@ -31,7 +31,7 @@ export type LevelsType = {
 export type InitialViewParametersType = {
   pitch: number,
   yaw: number,
-  fov: number
+  zoom: number
 }
 
 export type SceneDataType =  (Omit<Scene, 'levels' | 'initialViewParameters'> & {
@@ -41,7 +41,7 @@ export type SceneDataType =  (Omit<Scene, 'levels' | 'initialViewParameters'> & 
   linkHotspots: LinkHotspots[];
 })
 
-export const load = async () => {
+export const load = async ({url}) => {
   const [scenes, groups] = await Promise.all([
     db.scene.findMany({
       include: {
@@ -83,142 +83,40 @@ export const actions = {
       let { width: w = 0, height: h = 0} = await imageSharp.metadata()
 
       if (w / h != 2) {
-        throw { errorText: "Ảnh equirectangular chuyển thành cube map phải có tỷ lệ 2:1"}
+        throw { errorText: "Ảnh equirectangular phải có tỷ lệ 2:1"}
       }
 
-      if (w >= 24576) {
-        imageSharp.resize({width: 24576})
-        w = 24576
-        h = 12288
-      }
-      else if (w >= 20480) {
-        imageSharp.resize({width: 20480})
-        w = 20480
-        h = 10240
-      }
-      else if (w >= 16384) {
-        imageSharp.resize({width: 16384})
-        w = 16384
-        h = 8192
-      }
-      else if (w >= 12288) {
-        imageSharp.resize({width: 12288})
-        w = 12288
-        h = 6144
-      }
-      else if (w >= 8192) {
-        imageSharp.resize({width: 8192})
-        w = 8192
-        h = 4096
-      }
-      else if (w >= 4096) {
-        imageSharp.resize({width: 4096})
-        w = 4096
-        h = 2048
-      }
-      else {
-        throw {errorText: "Ảnh có kich thước quá bé"}
-      }
-
-      // if (h % 2 != 0) {
-      //   imageSharp.resize({height: h - (h % 2)})
-      //   h = h - (h % 2)
+      // if (h % 8 > 0) {
+      //   imageSharp.resize({height: h - (h % 8)})
+      //   h = h - (h % 8)
       //   w = h * 2
       // }
 
-      const dataImage = await imageSharp.raw().ensureAlpha().toBuffer()
-        .then((img) => {
-          let imageData = new Uint8ClampedArray(img)
-          return new ImageData(imageData, w, h)
-        })
+      imageSharp.resize({height: 4096})
+      h = 4096
+      w = 8192
 
-      // const dataImage = new ImageData(new Uint8ClampedArray(Buffer.from(await image.arrayBuffer())),w,h)
-
-      let renderOptions = []
-
-      for (let [faceName, position] of Object.entries(facePositions)) {
-        const options = {
-          // data: dataImage,
-          face: faceName,
-          rotation: Math.PI,
-          interpolation: "linear",
-        }
-        renderOptions.push(options)
-      }
-
-      const images = await Promise.all(renderOptions.map(v => {
-        return renderFacePromise({data: dataImage, ...v})
-      }))
-
-      // // image 360 to cube map
-      // let images = await loadImage(Buffer.from(await image.arrayBuffer())).then(async (image) => {
-      //   const { width, height } = image
-      //   const canvas = createCanvas(width, height)
-      //   console.log({width, height})
-      //   const ctx = canvas.getContext('2d')
-      //   ctx.drawImage(image, 0, 0, width, height)
-
-      //   console.log("drawImage")
-      
-      //   const dataImage = await new Promise(res => res(ctx.getImageData(0, 0, width, height))) 
-
-      //   console.log("getImageData")
-
-      //   let renderOptions = []
-    
-      //   for (let [faceName, position] of Object.entries(facePositions)) {
-      //     console.log({faceName})
-      //     const options = {
-      //       // data: dataImage,
-      //       face: faceName,
-      //       rotation: Math.PI,
-      //       interpolation: "linear",
-      //     }
-      //     renderOptions.push(options)
-      //   }
-
-      //   const data = await Promise.all(renderOptions.map(v => {
-      //     return renderFacePromise({data: dataImage, ...v})
-      //   }))
-
-      //   return data
-      // })
-
-      const findImage = (name: string) => images[Object.entries(facePositions).findIndex(v => v[1].name == name)]
-
-      let b = findImage("b"),
-          d = findImage("d"),
-          f = findImage("f"),
-          l = findImage("l"),
-          r = findImage("r"),
-          u = findImage("u")
       let uuid = v4()
-
-      let metadata = await sharp(b).metadata()
-      let width = Math.floor(metadata.width || 0)
-
-      let maxZoom = Math.max(Math.floor(Math.log2(width) - 8),3)
-
-      // save image tiles
-      for(let i = 1; i <= maxZoom; i++) {
-        await Promise.all([
-          slipImageFace(b, "b", name, i, uuid, maxZoom),
-          slipImageFace(d, "d", name, i, uuid, maxZoom),
-          slipImageFace(f, "f", name, i, uuid, maxZoom),
-          slipImageFace(l, "l", name, i, uuid, maxZoom),
-          slipImageFace(r, "r", name, i, uuid, maxZoom),
-          slipImageFace(u, "u", name, i, uuid, maxZoom),
-        ])
-      }
-      await mergeImagePreview(b,d,f,l,r,u,name,uuid, maxZoom)
-      await saveImageMobile(b,d,f,l,r,u,uuid)
 
       if (!existsSync(`./storage/tiles/${uuid}`)) {
         mkdirSync(`./storage/tiles/${uuid}`, { recursive: true })
       }
+
+      let distance = h / 8
+
+      for (let i = 0; i < 8; i ++) {
+        for (let j = 0; j < 16; j++) {
+          await imageSharp.clone().extract({left: j * distance, top: i * distance, width: distance, height: distance })
+          .jpeg({ quality: 80, force: true, mozjpeg: true })
+          .toFile(`./storage/tiles/${uuid}/${i}_${j}.jpg`)
+          .then((data: any) => {
+            return data
+          })
+        }
+      }
     
-      //save image demo
-      const imageDemo = await sharp(await image.arrayBuffer()).resize({ width: 1000 }).jpeg({ quality: 80, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/demo.jpg`)
+      //save image low
+      await imageSharp.resize({ width: 2000 }).jpeg({ quality: 60, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/low.jpg`)
         .then((data: any) => {
           return data
         })
@@ -231,26 +129,19 @@ export const actions = {
         audioUrl = `./storage/tiles/${uuid}/audio.${typeAduio}`
       }
 
-      let tileSize = width / Math.pow(2,(maxZoom - 1))
-
       const scene = await db.scene.create({
         data: {
           id: uuid,
           name: name,
           slug: slug,
-          faceSize: width * 2,
+          faceSize: w,
           initialViewParameters: `{
             "pitch": 0,
             "yaw": 0,
-            "fov": 1.5707963267948966
+            "zoom": 0.5
           }`,
           url: `/storage/tiles/${uuid}`,
-          levels: `[
-            { "tileSize": ${tileSize/2}, "size": ${tileSize/2}, "fall backOnly": true },
-            ${new Array(maxZoom).fill(0).map((v,i) => {
-              return `{ "tileSize": ${tileSize}, "size": ${tileSize * Math.pow(2,i)} }`
-            }).toString()}
-          ]`,
+          levels: `[]`,
           description: description,
           audio: audioUrl,
           groupId: groupId != "null" ? groupId : null,
@@ -430,33 +321,6 @@ export const actions = {
         let imageUrl: sharp.OutputInfo | null = null
         let videoUrl: string | null = null
         let uuid = v4()
-        // if (image && image?.size > 0) {
-
-        //   if (!existsSync(`./storage/info-hotspots`)) {
-        //     mkdirSync(`./storage/info-hotspots`, { recursive: true })
-        //   }
-
-        //   let imageFile = sharp(await image.arrayBuffer())
-        //   let { format } = await imageFile.metadata()
-          
-        //   imageUrl = await imageFile
-        //     .toFile(`./storage/info-hotspots/${uuid}.${format}`)
-        //     .then((data) => {
-        //       return data
-        //     })
-        // }
-
-        // if (video && video?.size > 0) {
-
-        //   if (!existsSync(`./storage/info-hotspots`)) {
-        //     mkdirSync(`./storage/info-hotspots`, { recursive: true })
-        //   }
-
-        //   let mimetype = path.extname(video.name)
-          
-        //   await fs.writeFile(`./storage/info-hotspots/${uuid}${mimetype}`, video.stream() as any)
-        //   videoUrl = `/storage/info-hotspots/${uuid}${mimetype}`
-        // }
 
         const infoHotspot = await db.infoHotspots.create({
           data: {
@@ -581,6 +445,22 @@ export const actions = {
       return fail(400, { error: `Đã có lỗi xảy ra vui lòng thử lại sau` })
     }
   },
+
+  storageLink: async ({ cookies, request, url }) => {
+    try {
+      // Tạo liên kết cứng hoặc liên kết mềm
+      if (process.platform === 'win32') {
+        // Nếu đang chạy trên Windows, tạo liên kết cứng
+        linkSync('./storage', './static/storage');
+      } else {
+        // Nếu đang chạy trên Unix-like system, tạo liên kết mềm
+        linkSync('./storage', './static/storage');
+      }
+      return {}
+    } catch (error) {
+      
+    }
+  }
 }
 
 const slipImageFace = async (

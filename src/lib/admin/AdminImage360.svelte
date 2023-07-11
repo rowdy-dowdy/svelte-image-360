@@ -1,11 +1,10 @@
 <script lang="ts">
-  import { onMount } from "svelte";
-  import Marzipano, { Scene } from "marzipano";
+  import { onMount, onDestroy } from "svelte";
   import LinkHotspot from "$lib/web/LinkHotspot.svelte";
   import InfoHotSpot from "$lib/web/InfoHotSpot.svelte";
   import InfoHotSpot2 from "$lib/web/InfoHotSpot2.svelte";
   import InfoHotSpotVideo from "$lib/web/InfoHotSpotVideo.svelte";
-  import { hold } from "../../stores/pano.js";
+  import { hold, videoShow } from "../../stores/pano.js";
   // import type { Scene } from "@prisma/client";
   import type { SceneDataType } from "../../routes/admin/(admin)/+page.server.js";
   import type { LinkHotspots, InfoHotspots, GroupScene } from "@prisma/client";
@@ -23,221 +22,88 @@
   import { append } from "svelte/internal";
   import { alertStore } from "../../stores/alert.js";
   import LinkHotspot4 from "$lib/web/LinkHotspot4.svelte";
+  import { Viewer } from "@photo-sphere-viewer/core";
+  import { EquirectangularTilesAdapter } from "@photo-sphere-viewer/equirectangular-tiles-adapter";
+  import { AutorotatePlugin } from "@photo-sphere-viewer/autorotate-plugin";
+  import { MarkersPlugin } from "@photo-sphere-viewer/markers-plugin";
+  import "@photo-sphere-viewer/core/index.css"
+  import "@photo-sphere-viewer/markers-plugin/index.css"
+  import { browser } from "$app/environment";
 
+  export let sceneId: string | null
   export let data: SceneDataType[]
   export let groups: GroupScene[]
 
   let viewerHTML: HTMLElement | null = null
-  let viewer: Marzipano.Viewer | null = null
+  let viewer: Viewer | null = null
 
-  type SceneType = {
-    data: SceneDataType
-    scene: Marzipano.Scene
-    view: Marzipano.RectilinearView
-  }
-
-  let scenes: SceneType[] = []
-
-  $: scenes = viewer ? data.map(function(data) {
-    var urlPrefix = "./tiles"
-    var source = Marzipano.ImageUrlSource.fromString(data.url + "/{z}/{f}/{y}/{x}.jpg",
-      { cubeMapPreviewUrl: data.url + "/preview.jpg" })
-    var geometry = new Marzipano.CubeGeometry(data.levels)
-
-    var limiter = Marzipano.RectilinearView.limit.traditional(data.faceSize, 100*Math.PI/180, 120*Math.PI/180)
-    var view = new Marzipano.RectilinearView(data.initialViewParameters, limiter)
-
-    var scene = viewer!.createScene({
-      source: source,
-      geometry: geometry,
-      view: view,
-      pinFirstLevel: true
-    })
-
-    // Create link hotspots.
-    data.linkHotspots.forEach(function(hotspot) {
-      var element = createLinkHotspotElement(hotspot)
-      scene?.hotspotContainer().createHotspot(element, { yaw: hotspot.yaw, pitch: hotspot.pitch })
-    })
-
-    // Create info hotspots.
-    data.infoHotspots.forEach(function(hotspot) {
-      var element = createInfoHotspotElement(hotspot)
-      scene?.hotspotContainer().createHotspot(element, { yaw: hotspot.yaw, pitch: hotspot.pitch })
-    })
-
-    return {
-      data: data,
-      scene: scene,
-      view: view
-    }
-  }) : [] as SceneType[]
-
-  let currentScene = data[0] 
+  let currentScene: SceneDataType | null = null
   let fullScreen = false
   let autoRotateCheck = false
-
-  let autoRotate: Function | null = Marzipano.autorotate({
-    yawSpeed: 0.03,
-    targetPitch: currentScene.initialViewParameters.pitch,
-    targetFov: Math.PI/2
-  })
+  let markersPlugin: MarkersPlugin | null
+  let autoRotate: AutorotatePlugin | null
+  let isMount = false
 
   // web
-  $: sceneId = $page.url.searchParams.get('scene')
-  $: {
-    let scene = scenes.find(v => v?.data.id == sceneId)
+  $: currentScene = data.find(v => v.id == sceneId) || null
+  $: changeScene(sceneId)
+  $: changeDataScene(data)
+
+  const changeScene = (id: string | null) => {
+    if (!isMount) return
+    let scene = data.find(v => v.id == id)
     if (scene) {
+      autoRotate?.setOptions({
+        autorotatePitch: scene.initialViewParameters.pitch
+      })
       switchScene(scene)
     }
-    else {
-      scenes.length > 0 ? goto('/admin/?scene='+scenes[0].data.id) : goto('/admin/')
-    }
   }
 
-  let showFormModalAdd = false
-  let coordinatesAdd = { yaw: 0, pitch: 0 }
-
-  function startAutorotate() {
-    if (!viewer || !autoRotate) return
-
-    viewer.startMovement(autoRotate)
-    viewer.setIdleMovement(3000, autoRotate)
-    autoRotateCheck = true
-  }
-
-  function stopAutorotate() {
-    if (!viewer) return
-    viewer.stopMovement()
-    viewer.setIdleMovement(Infinity)
-    autoRotateCheck = false
-  }
-
-  function createLinkHotspotElement(hotspot: LinkHotspots) {
-    var wrapper = document.createElement('div')
-
-    if (hotspot?.type == "2") {
-      let toolbarComponent = new LinkHotspot2({
-        target: wrapper,
-        props: {
-          title: findSceneDataById(hotspot.target)?.name || ""
-        }
+  const changeDataScene = async (data: SceneDataType[]) => {
+    if (currentScene && isMount) {
+      console.log(currentScene.id, sceneId)
+      await new Promise(res => {
+        markersPlugin?.clearMarkers()
+        res(true)
       })
-    }
-    else if (hotspot?.type == "3") {
-      let toolbarComponent = new LinkHotspot3({
-			  target: wrapper,
-        props: {
-          title: findSceneDataById(hotspot.target)?.name || ""
-        }
-      })
-    }
-    else if (hotspot?.type == "4") {
-      let toolbarComponent = new LinkHotspot4({
-			  target: wrapper,
-        props: {
-          title: findSceneDataById(hotspot.target)?.name || ""
-        }
-      })
-    }
-    else {
-      let toolbarComponent = new LinkHotspot({
-			  target: wrapper,
-        props: {
-          title: findSceneDataById(hotspot.target)?.name || "",
-          image: `/storage/tiles/${hotspot.target}/demo.jpg`
-        }
-      })
-    }
-
-		// toolbarComponent.$on('click-eye', ({ detail }) => eye = detail);
-		// toolbarComponent.$on('click-lines', ({ detail }) => lines = detail);
-		// toolbarComponent.$on('click-reset', () => {
-		// 	map.setView(initialView, 5, { animate: true })
-		// })
-
-    // Add click event handler.
-    wrapper.addEventListener('click', function() {
-      goto('/admin/?scene='+hotspot.target)
-    });
-    
-    stopTouchAndScrollEventPropagation(wrapper);
-
-    return wrapper;
-  }
-
-  function createInfoHotspotElement(hotspot: InfoHotspots) {
-    var wrapper = document.createElement('div')
-
-    if (hotspot.type == "2") {
-      let toolbarComponent = new InfoHotSpot2({
-        target: wrapper,
-        props: {
-          title: hotspot?.title || "",
-          video: hotspot?.video || "",
-        }
-      })
-    }
-    else {
-      let toolbarComponent = new InfoHotSpot({
-        target: wrapper,
-        props: {
-          title: hotspot?.title || ""
-        }
-      })
-    }
-
-    stopTouchAndScrollEventPropagation(wrapper)
-
-    return wrapper
-  }
-
-  function stopTouchAndScrollEventPropagation(element: HTMLElement) {
-    var eventList = [
-      'touchstart', 'touchmove', 'touchend', 'touchcancel',
-      'pointerdown', 'pointermove', 'pointerup', 'pointercancel',
-      'wheel', 'click', 'mousedown'
-    ];
-    for (var i = 0; i < eventList.length; i++) {
-      element.addEventListener(eventList[i], function(event: Event) {
-        event.stopPropagation();
-        event.stopImmediatePropagation()
-      });
+      createLinkHotspotElements(currentScene.linkHotspots)
+      createInfoHotspotElements(currentScene.infoHotspots)
     }
   }
 
-  function findSceneById(id: string) {
-    for (var i = 0; i < scenes.length; i++) {
-      if (scenes[i]?.data.id === id) {
-        return scenes[i];
-      }
-    }
-    return null;
-  }
+  const findSceneDataById = (id: string ) => data.find(v => v.id == sceneId)
 
-  function findSceneDataById(id: string) {
-    for (var i = 0; i < data.length; i++) {
-      if (data[i].id === id) {
-        return data[i];
-      }
-    }
-    return null;
-  }
+  function switchScene(scene: SceneDataType) {
+    markersPlugin?.clearMarkers()
+    viewer?.setPanorama({
+      width: scene.faceSize,
+      cols: 16,
+      rows: 8,
+      baseUrl: `/storage/tiles/${scene.id}/low.jpg`,
+      tileUrl: (col: number, row: number) => {
+        return `/storage/tiles/${scene.id}/${row}_${col}.jpg`
+      },
+    }, {
+      pitch: scene.initialViewParameters.pitch,
+      yaw: scene.initialViewParameters.yaw,
+      zoom: scene.initialViewParameters.zoom,
+      showLoader: false,
+      transition: 100,
 
-  function switchScene(scene: SceneType) {
-    // stopAutorotate()
-    scene.view.setParameters(scene.data.initialViewParameters)
-    scene.scene.switchTo()
-    // startAutorotate()
-    currentScene = scene.data
+      // overlay: false
+    }).then(v => {
+      createLinkHotspotElements(scene.linkHotspots)
+      createInfoHotspotElements(scene.infoHotspots)
+    })
   }
 
   function toggleAutorotate() {
     if (autoRotateCheck) {
-      stopAutorotate()
+      autoRotate?.stop()
       autoRotateCheck = false
     } else {
-      startAutorotate()
+      autoRotate?.start()
       autoRotateCheck = true
     }
   }
@@ -252,41 +118,114 @@
       fullScreen = false
     }
   }
+ 
+  function createLinkHotspotElements(hotspots: LinkHotspots[]) {
+    hotspots.forEach(hotspot => {
+      let wrapper = document.createElement('div'),
+        tooltip = undefined,
+        html = undefined,
+        image = undefined,
+        size = { width: 0, height: 0 }
 
-  onMount(() => {
-    if (!viewerHTML) return
-    /// Create viewer.
-    viewer = new Marzipano.Viewer(viewerHTML, {
-      controls: {
-        mouseViewMode: "drag"
+      if (hotspot?.type == "2") {
+        tooltip = findSceneDataById(hotspot.target)?.name || ""
+        image = '/images/flycam.png'
+        size = { width: 96, height: 96 }
       }
+      else if (hotspot?.type == "3") {
+        tooltip = findSceneDataById(hotspot.target)?.name || ""
+        image = '/images/arrow.png'
+        size = { width: 96, height: 96 }
+      }
+      else if (hotspot?.type == "4") {
+        new LinkHotspot4({
+          target: wrapper,
+          props: {
+            title: findSceneDataById(hotspot.target)?.name || ""
+          }
+        })
+        html = wrapper.innerHTML
+      }
+      else {
+        new LinkHotspot({
+          target: wrapper,
+          props: {
+            title: findSceneDataById(hotspot.target)?.name || "",
+            image: `/storage/tiles/${hotspot.target}/low.jpg`
+          }
+        })
+        html = wrapper.innerHTML
+      }
+
+      markersPlugin?.addMarker({
+        id: hotspot.id,
+        position: { yaw: hotspot.yaw, pitch: hotspot.pitch },
+        html: html,
+        image: image,
+        size: size,
+        anchor: 'center',
+        data: {
+          type: 'link',
+          target: hotspot.target
+        },
+        tooltip: tooltip
+      });
     })
-  });
-
-  const getPitchYaw = (e: MouseEvent) => {
-    if (!viewer) return
-
-    var rect = (e.target as HTMLElement).getBoundingClientRect()
-    let coordinates = (viewer.view() as any).screenToCoordinates({x : e.clientX - rect.left, y: e.clientY - rect.top})
-
-    coordinatesAdd = {
-      yaw: coordinates.yaw,
-      pitch: coordinates.pitch
-    }
-
-    console.log({coordinates})
-
-    showFormModalAdd = true
   }
 
-  const panoEventMouseDown = (e: Event) => {
-    $hold = true
-  }
+  function createInfoHotspotElements(hotspots: InfoHotspots[]) {
+    hotspots.forEach(hotspot => {
+      let wrapper = document.createElement('div'),
+        tooltip = undefined,
+        html = undefined,
+        image = undefined,
+        size = { width: 0, height: 0 },
+        content = undefined
 
-  const panoEventMouseUp = (e: Event) => {
-    $hold = false
-  }
+      if (hotspot?.type == "2") {
+        new InfoHotSpot2({
+          target: wrapper,
+          props: {
+            // title: findSceneDataById(hotspot.target)?.name || ""
+          }
+        })
+        tooltip = hotspot.title ?? ''
+        html = wrapper.innerHTML
+      }
+      else {
+        new InfoHotSpot({
+          target: wrapper,
+          props: {
+          }
+        })
+        tooltip = hotspot.title ?? ''
+        content = hotspot.description ?? ''
+        html = wrapper.innerHTML
+      }
 
+      markersPlugin?.addMarker({
+        id: hotspot.id,
+        position: { yaw: hotspot.yaw, pitch: hotspot.pitch },
+        html: html,
+        image: image,
+        size: size,
+        anchor: 'center',
+        content,
+        data: {
+          type: 'info',
+          title: tooltip,
+          video: hotspot.video
+        },
+        tooltip: tooltip
+      });
+    })
+  }
+  
+  // add hotspot modal
+  let showFormModalAdd = false
+  let coordinatesAdd = { yaw: 0, pitch: 0 }
+
+  // delete hotspot modal
   let popupDeleteHotspot = false
   let valueDeleteHotspot: {
     id: string
@@ -300,6 +239,7 @@
     popupDeleteHotspot = true
   }
 
+  // edit hotspot modal
   let showFormModalEdit = false
   let valueEditHotspot: {
     type: 'info' | "link"
@@ -313,6 +253,7 @@
     showFormModalEdit = true
   }
 
+  // delete scene modal
   let popupDeleteScene = false
   let valueDeleteScene: string | null = null
   const deleteScene = () => {
@@ -320,6 +261,7 @@
     popupDeleteScene = true
   }
 
+  // edit scene modal
   let hiddenPopupEditScene = true
   let valueEditScene: SceneDataType | null = null
   const editScene = () => {
@@ -333,8 +275,8 @@
     let data = new FormData()
     data.append('id', sceneId || "")
 
-    let _params = (viewer.view() as any)._params
-    const initialViewParameters = { pitch: _params.pitch, yaw: _params.yaw, fov: _params.fov }
+    let _params = viewer.getPosition()
+    const initialViewParameters = { pitch: _params.pitch, yaw: _params.yaw, zoom: viewer.getZoomLevel() }
     data.append('initialViewParameters', JSON.stringify(initialViewParameters))
     
     const res = await fetch('/admin?/updateInitialViewParametersScene', {
@@ -357,19 +299,81 @@
       })
     }
   }
+
+  onMount(() => {
+    if (!viewerHTML) return
+
+    viewer = new Viewer({
+      container: viewerHTML,
+      adapter: EquirectangularTilesAdapter,
+      navbar: false,
+      plugins: [
+        [AutorotatePlugin, {
+          autostartDelay: null,
+          autostartOnIdle: true,
+          autorotatePitch: currentScene?.initialViewParameters.pitch,
+          autorotateSpeed: '0.5rpm',
+        }],
+        MarkersPlugin
+      ],
+
+      defaultPitch: currentScene?.initialViewParameters.pitch,
+      defaultYaw: currentScene?.initialViewParameters.yaw,
+      defaultZoomLvl: currentScene?.initialViewParameters.zoom,
+
+      touchmoveTwoFingers: true,
+      panorama: {
+        width: currentScene?.faceSize,
+        cols: 16,
+        rows: 8,
+        baseUrl: `/storage/tiles/${currentScene?.id}/low.jpg`,
+        tileUrl: (col: number, row: number) => {
+          return `/storage/tiles/${currentScene?.id}/${row}_${col}.jpg`
+        },
+      },
+    })
+
+    markersPlugin = viewer.getPlugin(MarkersPlugin) as MarkersPlugin
+    autoRotate = viewer.getPlugin(AutorotatePlugin) as AutorotatePlugin
+
+    if (data.length > 0) {
+      createLinkHotspotElements(currentScene?.linkHotspots || [])
+      createInfoHotspotElements(currentScene?.infoHotspots || [])
+    }
+
+    markersPlugin.addEventListener('select-marker', ({ marker }) => {
+      if (marker.data?.type == "link" && marker.data?.target) {
+        sceneId = marker.data?.target
+      }
+      
+      if (marker.data?.type == "info") {
+        if (marker.data?.video) {
+          $videoShow = marker.data?.video
+        }
+      }
+    })
+
+    viewer.addEventListener('dblclick', ({ data }) => {
+      coordinatesAdd = {
+        yaw: data.yaw,
+        pitch: data.pitch
+      }
+
+      showFormModalAdd = true
+    })
+
+    isMount = true
+  })
+
+  onDestroy(() => {
+    // if(viewer)
+    //   viewer.destroy()
+  })
 </script>
 
-<svelte:head>
-  <meta name="viewport" content="target-densitydpi=device-dpi, width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, minimal-ui">
-  <style> @-ms-viewport { width: device-width; } </style>
-</svelte:head>
+<div id="viewer" bind:this={viewerHTML}  class="w-full h-full"/>
 
-<div id="pano" bind:this={viewerHTML}  class="w-full h-full" on:dblclick={getPitchYaw}
-  on:mousedown={panoEventMouseDown}
-  on:mouseup={panoEventMouseUp}
-/>
-
-<div class="options-bar absolute bottom-0 left-0 right-0 bg-black/60 text-white select-none">
+<div class="options-bar absolute bottom-0 left-0 right-0 bg-black/60 text-white select-none z-10">
   <div class="absolute left-0 top-0 flex-none flex divide-x divide-transparent">
     <span class="icon w-10 h-10 p-2 bg-sky-600 cursor-pointer" on:click={editScene}>
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="m18.988 2.012 3 3L19.701 7.3l-3-3zM8 16h3l7.287-7.287-3-3L8 13z"></path><path d="M19 19H8.158c-.026 0-.053.01-.079.01-.033 0-.066-.009-.1-.01H5V5h6.847l2-2H5c-1.103 0-2 .896-2 2v14c0 1.104.897 2 2 2h14a2 2 0 0 0 2-2v-8.668l-2 2V19z"></path></svg>
@@ -380,7 +384,7 @@
     </span>
     
   </div>
-  <div class="text-center p-2">{currentScene.name}</div>
+  <div class="text-center p-2">{currentScene?.name}</div>
 
   <div class="absolute right-0 top-0 flex-none flex divide-x divide-transparent">
     <form method="post" on:submit|preventDefault={updateInitialViewParametersScene}>
@@ -415,60 +419,62 @@
   Nhấp đúp chuột để thêm mới điểm nóng
 </div>
 
-<ModelAddHotspot bind:showFormModalAdd={showFormModalAdd} bind:coordinatesAdd={coordinatesAdd} bind:scenes={data}/>
+<ModelAddHotspot bind:showFormModalAdd={showFormModalAdd} bind:coordinatesAdd={coordinatesAdd} bind:scenes={data} bind:sceneId={sceneId}/>
 
-<div class="absolute top-0 right-0 p-4">
-  <Button class="gap-2">
-    Danh sách điểm nóng
-    <Indicator color="none" class="bg-primary-200 text-xs text-primary-800 font-semibold" size="lg"
-      >{currentScene.infoHotspots.length + currentScene.linkHotspots.length}</Indicator>
-  </Button>
-  <Dropdown class="w-96 overflow-y-auto py-1 max-h-[600px]" placement="bottom-end">
-    {#if currentScene.infoHotspots.length + currentScene.linkHotspots.length == 0}
-      <p class="px-4 py-2 text-center">Không có điểm nóng nào</p>
-    {/if}
+{#if currentScene}
+  <div class="absolute top-0 right-0 p-4 z-10">
+    <Button class="gap-2">
+      Danh sách điểm nóng
+      <Indicator color="none" class="bg-primary-200 text-xs text-primary-800 font-semibold" size="lg"
+        >{currentScene.infoHotspots.length + currentScene.linkHotspots.length}</Indicator>
+    </Button>
+    <Dropdown class="w-96 overflow-y-auto py-1 max-h-[500px]" placement="bottom-end">
+      {#if currentScene.infoHotspots.length + currentScene.linkHotspots.length == 0}
+        <p class="px-4 py-2 text-center">Không có điểm nóng nào</p>
+      {/if}
 
-    {#each currentScene.linkHotspots as item (item.id)}
-      <DropdownItem class="flex items-center text-base font-semibold gap-2 cursor-auto">
-        <span class="flex-none icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M8.465 11.293c1.133-1.133 3.109-1.133 4.242 0l.707.707 1.414-1.414-.707-.707c-.943-.944-2.199-1.465-3.535-1.465s-2.592.521-3.535 1.465L4.929 12a5.008 5.008 0 0 0 0 7.071 4.983 4.983 0 0 0 3.535 1.462A4.982 4.982 0 0 0 12 19.071l.707-.707-1.414-1.414-.707.707a3.007 3.007 0 0 1-4.243 0 3.005 3.005 0 0 1 0-4.243l2.122-2.121z"></path><path d="m12 4.929-.707.707 1.414 1.414.707-.707a3.007 3.007 0 0 1 4.243 0 3.005 3.005 0 0 1 0 4.243l-2.122 2.121c-1.133 1.133-3.109 1.133-4.242 0L10.586 12l-1.414 1.414.707.707c.943.944 2.199 1.465 3.535 1.465s2.592-.521 3.535-1.465L19.071 12a5.008 5.008 0 0 0 0-7.071 5.006 5.006 0 0 0-7.071 0z"></path></svg></span>
-        <span class="flex-grow min-w-0">{findSceneDataById(item.target)?.name || 'Liên kết'}</span>
+      {#each currentScene.linkHotspots as item (item.id)}
+        <DropdownItem class="flex items-center text-base font-semibold gap-2 cursor-auto">
+          <span class="flex-none icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M8.465 11.293c1.133-1.133 3.109-1.133 4.242 0l.707.707 1.414-1.414-.707-.707c-.943-.944-2.199-1.465-3.535-1.465s-2.592.521-3.535 1.465L4.929 12a5.008 5.008 0 0 0 0 7.071 4.983 4.983 0 0 0 3.535 1.462A4.982 4.982 0 0 0 12 19.071l.707-.707-1.414-1.414-.707.707a3.007 3.007 0 0 1-4.243 0 3.005 3.005 0 0 1 0-4.243l2.122-2.121z"></path><path d="m12 4.929-.707.707 1.414 1.414.707-.707a3.007 3.007 0 0 1 4.243 0 3.005 3.005 0 0 1 0 4.243l-2.122 2.121c-1.133 1.133-3.109 1.133-4.242 0L10.586 12l-1.414 1.414.707.707c.943.944 2.199 1.465 3.535 1.465s2.592-.521 3.535-1.465L19.071 12a5.008 5.008 0 0 0 0-7.071 5.006 5.006 0 0 0-7.071 0z"></path></svg></span>
+          <span class="flex-grow min-w-0">{findSceneDataById(item.target)?.name || 'Liên kết'}</span>
 
-        <span class="flex-none icon p-1 hover:text-sky-600 cursor-pointer"
-          on:click|preventDefault={() => editHotspot(item, 'link')}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="m18.988 2.012 3 3L19.701 7.3l-3-3zM8 16h3l7.287-7.287-3-3L8 13z"></path><path d="M19 19H8.158c-.026 0-.053.01-.079.01-.033 0-.066-.009-.1-.01H5V5h6.847l2-2H5c-1.103 0-2 .896-2 2v14c0 1.104.897 2 2 2h14a2 2 0 0 0 2-2v-8.668l-2 2V19z"></path></svg>
-        </span>
-        <span class="flex-none icon p-1 hover:text-red-600 cursor-pointer"
-          on:click|preventDefault={() => deleteHotspot(item.id, 'link')}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M5 20a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8h2V6h-4V4a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2H3v2h2zM9 4h6v2H9zM8 8h9v12H7V8z"></path><path d="M9 10h2v8H9zm4 0h2v8h-2z"></path></svg>
-        </span>
-      </DropdownItem>
-    {/each}
+          <span class="flex-none icon p-1 hover:text-sky-600 cursor-pointer"
+            on:click|preventDefault={() => editHotspot(item, 'link')}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="m18.988 2.012 3 3L19.701 7.3l-3-3zM8 16h3l7.287-7.287-3-3L8 13z"></path><path d="M19 19H8.158c-.026 0-.053.01-.079.01-.033 0-.066-.009-.1-.01H5V5h6.847l2-2H5c-1.103 0-2 .896-2 2v14c0 1.104.897 2 2 2h14a2 2 0 0 0 2-2v-8.668l-2 2V19z"></path></svg>
+          </span>
+          <span class="flex-none icon p-1 hover:text-red-600 cursor-pointer"
+            on:click|preventDefault={() => deleteHotspot(item.id, 'link')}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M5 20a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8h2V6h-4V4a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2H3v2h2zM9 4h6v2H9zM8 8h9v12H7V8z"></path><path d="M9 10h2v8H9zm4 0h2v8h-2z"></path></svg>
+          </span>
+        </DropdownItem>
+      {/each}
 
-    {#if currentScene.infoHotspots.length > 0 && currentScene.linkHotspots.length > 0}
-      <DropdownDivider />
-    {/if}
+      {#if currentScene.infoHotspots.length > 0 && currentScene.linkHotspots.length > 0}
+        <DropdownDivider />
+      {/if}
 
-    {#each currentScene.infoHotspots as item (item.id)}
-      <DropdownItem class="flex items-center text-base font-semibold gap-2 cursor-auto">
-        <span class="flex-none icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z"></path><path d="M11 11h2v6h-2zm0-4h2v2h-2z"></path></svg></span>
-        <span class="flex-grow min-w-0">{item.title}</span>
+      {#each currentScene.infoHotspots as item (item.id)}
+        <DropdownItem class="flex items-center text-base font-semibold gap-2 cursor-auto">
+          <span class="flex-none icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z"></path><path d="M11 11h2v6h-2zm0-4h2v2h-2z"></path></svg></span>
+          <span class="flex-grow min-w-0">{item.title}</span>
 
-        <span class="flex-none icon p-1 hover:text-sky-600 cursor-pointer"
-          on:click|preventDefault={() => editHotspot(item, 'info')}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="m18.988 2.012 3 3L19.701 7.3l-3-3zM8 16h3l7.287-7.287-3-3L8 13z"></path><path d="M19 19H8.158c-.026 0-.053.01-.079.01-.033 0-.066-.009-.1-.01H5V5h6.847l2-2H5c-1.103 0-2 .896-2 2v14c0 1.104.897 2 2 2h14a2 2 0 0 0 2-2v-8.668l-2 2V19z"></path></svg>
-        </span>
-        <span class="flex-none icon p-1 hover:text-red-600 cursor-pointer"
-          on:click|preventDefault={() => deleteHotspot(item.id, 'info')}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M5 20a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8h2V6h-4V4a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2H3v2h2zM9 4h6v2H9zM8 8h9v12H7V8z"></path><path d="M9 10h2v8H9zm4 0h2v8h-2z"></path></svg>
-        </span>
-      </DropdownItem>
-    {/each}
-  </Dropdown>
-</div>
+          <span class="flex-none icon p-1 hover:text-sky-600 cursor-pointer"
+            on:click|preventDefault={() => editHotspot(item, 'info')}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="m18.988 2.012 3 3L19.701 7.3l-3-3zM8 16h3l7.287-7.287-3-3L8 13z"></path><path d="M19 19H8.158c-.026 0-.053.01-.079.01-.033 0-.066-.009-.1-.01H5V5h6.847l2-2H5c-1.103 0-2 .896-2 2v14c0 1.104.897 2 2 2h14a2 2 0 0 0 2-2v-8.668l-2 2V19z"></path></svg>
+          </span>
+          <span class="flex-none icon p-1 hover:text-red-600 cursor-pointer"
+            on:click|preventDefault={() => deleteHotspot(item.id, 'info')}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M5 20a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8h2V6h-4V4a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2H3v2h2zM9 4h6v2H9zM8 8h9v12H7V8z"></path><path d="M9 10h2v8H9zm4 0h2v8h-2z"></path></svg>
+          </span>
+        </DropdownItem>
+      {/each}
+    </Dropdown>
+  </div>
+{/if}
 
 <ModelDeleteHotspot bind:popupDeleteHotspot={popupDeleteHotspot} bind:valueDeleteHotspot={valueDeleteHotspot} />
 <ModelEditHotspot bind:scenes={data} bind:valueEditHotspot={valueEditHotspot} bind:showFormModalEdit={showFormModalEdit} />
@@ -476,8 +482,814 @@
 <ModelDeleteScene bind:popupDelete={popupDeleteScene} bind:valueDelete={valueDeleteScene} />
 <ModelEditScene bind:hidden={hiddenPopupEditScene} bind:data={valueEditScene} bind:groups={groups} />
 
-<style>
-  :global(#pano > canvas ~ div) {
-    overflow: hidden !important;
+<style lang="postcss">
+  :global(.psv-panel-content) {
+    backdrop-filter: blur(20px);
+    /* all: unset; */
+    color: #fff;
+    padding: 1rem;
+    overflow-y: auto;
   }
+
+  :global(.psv-panel-content *) {
+    /* all: unset; */
+    word-wrap: break-word;
+  }
+</style>
+
+<style global>
+  .mce-content-body .mce-item-anchor {
+    background: transparent url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D'8'%20height%3D'12'%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%3E%3Cpath%20d%3D'M0%200L8%200%208%2012%204.09117821%209%200%2012z'%2F%3E%3C%2Fsvg%3E%0A") no-repeat center
+}
+
+.mce-content-body .mce-item-anchor:empty {
+    cursor: default;
+    display: inline-block;
+    height: 12px!important;
+    padding: 0 2px;
+    -webkit-user-modify: read-only;
+    -moz-user-modify: read-only;
+    -webkit-user-select: all;
+    -moz-user-select: all;
+    user-select: all;
+    width: 8px!important
+}
+
+.mce-content-body .mce-item-anchor:not(:empty) {
+    background-position-x: 2px;
+    display: inline-block;
+    padding-left: 12px
+}
+
+.mce-content-body .mce-item-anchor[data-mce-selected] {
+    outline-offset: 1px
+}
+
+.tox-comments-visible .tox-comment[contenteditable=false]:not([data-mce-selected]),.tox-comments-visible span.tox-comment img:not([data-mce-selected]),.tox-comments-visible span.tox-comment span.mce-preview-object:not([data-mce-selected]),.tox-comments-visible span.tox-comment>audio:not([data-mce-selected]),.tox-comments-visible span.tox-comment>video:not([data-mce-selected]) {
+    outline: 3px solid #ffe89d
+}
+
+.tox-comments-visible .tox-comment[contenteditable=false][data-mce-annotation-active=true]:not([data-mce-selected]) {
+    outline: 3px solid #fed635
+}
+
+.tox-comments-visible span.tox-comment[data-mce-annotation-active=true] img:not([data-mce-selected]),.tox-comments-visible span.tox-comment[data-mce-annotation-active=true] span.mce-preview-object:not([data-mce-selected]),.tox-comments-visible span.tox-comment[data-mce-annotation-active=true]>audio:not([data-mce-selected]),.tox-comments-visible span.tox-comment[data-mce-annotation-active=true]>video:not([data-mce-selected]) {
+    outline: 3px solid #fed635
+}
+
+.tox-comments-visible span.tox-comment:not([data-mce-selected]) {
+    background-color: #ffe89d;
+    outline: 0
+}
+
+.tox-comments-visible span.tox-comment[data-mce-annotation-active=true]:not([data-mce-selected=inline-boundary]) {
+    background-color: #fed635
+}
+
+.tox-checklist>li:not(.tox-checklist--hidden) {
+    list-style: none;
+    margin: .25em 0
+}
+
+.tox-checklist>li:not(.tox-checklist--hidden)::before {
+    content: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%3E%3Cg%20id%3D%22checklist-unchecked%22%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Crect%20id%3D%22Rectangle%22%20width%3D%2215%22%20height%3D%2215%22%20x%3D%22.5%22%20y%3D%22.5%22%20fill-rule%3D%22nonzero%22%20stroke%3D%22%234C4C4C%22%20rx%3D%222%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E%0A");
+    cursor: pointer;
+    height: 1em;
+    margin-left: -1.5em;
+    margin-top: .125em;
+    position: absolute;
+    width: 1em
+}
+
+.tox-checklist li:not(.tox-checklist--hidden).tox-checklist--checked::before {
+    content: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%3E%3Cg%20id%3D%22checklist-checked%22%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Crect%20id%3D%22Rectangle%22%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22%234099FF%22%20fill-rule%3D%22nonzero%22%20rx%3D%222%22%2F%3E%3Cpath%20id%3D%22Path%22%20fill%3D%22%23FFF%22%20fill-rule%3D%22nonzero%22%20d%3D%22M11.5703186%2C3.14417309%20C11.8516238%2C2.73724603%2012.4164781%2C2.62829933%2012.83558%2C2.89774797%20C13.260121%2C3.17069355%2013.3759736%2C3.72932262%2013.0909105%2C4.14168582%20L7.7580587%2C11.8560195%20C7.43776896%2C12.3193404%206.76483983%2C12.3852142%206.35607322%2C11.9948725%20L3.02491697%2C8.8138662%20C2.66090143%2C8.46625845%202.65798871%2C7.89594698%203.01850234%2C7.54483354%20C3.373942%2C7.19866177%203.94940006%2C7.19592841%204.30829608%2C7.5386474%20L6.85276923%2C9.9684299%20L11.5703186%2C3.14417309%20Z%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E%0A")
+}
+
+[dir=rtl] .tox-checklist>li:not(.tox-checklist--hidden)::before {
+    margin-left: 0;
+    margin-right: -1.5em
+}
+
+code[class*=language-],pre[class*=language-] {
+    color: #000;
+    background: 0 0;
+    text-shadow: 0 1px #fff;
+    font-family: Consolas,Monaco,'Andale Mono','Ubuntu Mono',monospace;
+    font-size: 1em;
+    text-align: left;
+    white-space: pre;
+    word-spacing: normal;
+    word-break: normal;
+    word-wrap: normal;
+    line-height: 1.5;
+    -moz-tab-size: 4;
+    tab-size: 4;
+    -webkit-hyphens: none;
+    hyphens: none
+}
+
+code[class*=language-] ::-moz-selection,code[class*=language-]::-moz-selection,pre[class*=language-] ::-moz-selection,pre[class*=language-]::-moz-selection {
+    text-shadow: none;
+    background: #b3d4fc
+}
+
+code[class*=language-] ::selection,code[class*=language-]::selection,pre[class*=language-] ::selection,pre[class*=language-]::selection {
+    text-shadow: none;
+    background: #b3d4fc
+}
+
+@media print {
+    code[class*=language-],pre[class*=language-] {
+        text-shadow: none
+    }
+}
+
+pre[class*=language-] {
+    padding: 1em;
+    margin: .5em 0;
+    overflow: auto
+}
+
+:not(pre)>code[class*=language-],pre[class*=language-] {
+    background: #f5f2f0
+}
+
+:not(pre)>code[class*=language-] {
+    padding: .1em;
+    border-radius: .3em;
+    white-space: normal
+}
+
+.token.cdata,.token.comment,.token.doctype,.token.prolog {
+    color: #708090
+}
+
+.token.punctuation {
+    color: #999
+}
+
+.token.namespace {
+    opacity: .7
+}
+
+.token.boolean,.token.constant,.token.deleted,.token.number,.token.property,.token.symbol,.token.tag {
+    color: #905
+}
+
+.token.attr-name,.token.builtin,.token.char,.token.inserted,.token.selector,.token.string {
+    color: #690
+}
+
+.language-css .token.string,.style .token.string,.token.entity,.token.operator,.token.url {
+    color: #9a6e3a;
+    background: hsla(0,0%,100%,.5)
+}
+
+.token.atrule,.token.attr-value,.token.keyword {
+    color: #07a
+}
+
+.token.class-name,.token.function {
+    color: #dd4a68
+}
+
+.token.important,.token.regex,.token.variable {
+    color: #e90
+}
+
+.token.bold,.token.important {
+    font-weight: 700
+}
+
+.token.italic {
+    font-style: italic
+}
+
+.token.entity {
+    cursor: help
+}
+
+.mce-content-body {
+    overflow-wrap: break-word;
+    word-wrap: break-word
+}
+
+.mce-content-body .mce-visual-caret {
+    background-color: #000;
+    background-color: currentColor;
+    position: absolute
+}
+
+.mce-content-body .mce-visual-caret-hidden {
+    display: none
+}
+
+.mce-content-body [data-mce-caret] {
+    left: -1000px;
+    margin: 0;
+    padding: 0;
+    position: absolute;
+    right: auto;
+    top: 0
+}
+
+.mce-content-body .mce-offscreen-selection {
+    left: -2000000px;
+    max-width: 1000000px;
+    position: absolute
+}
+
+.mce-content-body [contentEditable=false] {
+    cursor: default
+}
+
+.mce-content-body [contentEditable=true] {
+    cursor: text
+}
+
+.tox-cursor-format-painter {
+    cursor: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%3E%0A%20%20%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%0A%20%20%20%20%3Cpath%20fill%3D%22%23000%22%20fill-rule%3D%22nonzero%22%20d%3D%22M15%2C6%20C15%2C5.45%2014.55%2C5%2014%2C5%20L6%2C5%20C5.45%2C5%205%2C5.45%205%2C6%20L5%2C10%20C5%2C10.55%205.45%2C11%206%2C11%20L14%2C11%20C14.55%2C11%2015%2C10.55%2015%2C10%20L15%2C9%20L16%2C9%20L16%2C12%20L9%2C12%20L9%2C19%20C9%2C19.55%209.45%2C20%2010%2C20%20L11%2C20%20C11.55%2C20%2012%2C19.55%2012%2C19%20L12%2C14%20L18%2C14%20L18%2C7%20L15%2C7%20L15%2C6%20Z%22%2F%3E%0A%20%20%20%20%3Cpath%20fill%3D%22%23000%22%20fill-rule%3D%22nonzero%22%20d%3D%22M1%2C1%20L8.25%2C1%20C8.66421356%2C1%209%2C1.33578644%209%2C1.75%20L9%2C1.75%20C9%2C2.16421356%208.66421356%2C2.5%208.25%2C2.5%20L2.5%2C2.5%20L2.5%2C8.25%20C2.5%2C8.66421356%202.16421356%2C9%201.75%2C9%20L1.75%2C9%20C1.33578644%2C9%201%2C8.66421356%201%2C8.25%20L1%2C1%20Z%22%2F%3E%0A%20%20%3C%2Fg%3E%0A%3C%2Fsvg%3E%0A"),default
+}
+
+div.mce-footnotes hr {
+    margin-inline-end:auto;margin-inline-start:0;width: 25%
+}
+
+div.mce-footnotes li>a.mce-footnotes-backlink {
+    text-decoration: none
+}
+
+@media print {
+    sup.mce-footnote a {
+        color: #000;
+        text-decoration: none
+    }
+
+    div.mce-footnotes {
+        break-inside: avoid;
+        width: 100%
+    }
+
+    div.mce-footnotes li>a.mce-footnotes-backlink {
+        display: none
+    }
+}
+
+.mce-content-body figure.align-left {
+    float: left
+}
+
+.mce-content-body figure.align-right {
+    float: right
+}
+
+.mce-content-body figure.image.align-center {
+    display: table;
+    margin-left: auto;
+    margin-right: auto
+}
+
+.mce-preview-object {
+    border: 1px solid gray;
+    display: inline-block;
+    line-height: 0;
+    margin: 0 2px 0 2px;
+    position: relative
+}
+
+.mce-preview-object .mce-shim {
+    background: url(data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7);
+    height: 100%;
+    left: 0;
+    position: absolute;
+    top: 0;
+    width: 100%
+}
+
+.mce-preview-object[data-mce-selected="2"] .mce-shim {
+    display: none
+}
+
+.mce-content-body .mce-mergetag {
+    cursor: default!important;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none
+}
+
+.mce-content-body .mce-mergetag:hover {
+    background-color: rgba(0,108,231,.1)
+}
+
+.mce-content-body .mce-mergetag-affix {
+    background-color: rgba(0,108,231,.1);
+    color: #006ce7
+}
+
+.mce-object {
+    background: transparent url("data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%3E%3Cpath%20d%3D%22M4%203h16a1%201%200%200%201%201%201v16a1%201%200%200%201-1%201H4a1%201%200%200%201-1-1V4a1%201%200%200%201%201-1zm1%202v14h14V5H5zm4.79%202.565l5.64%204.028a.5.5%200%200%201%200%20.814l-5.64%204.028a.5.5%200%200%201-.79-.407V7.972a.5.5%200%200%201%20.79-.407z%22%2F%3E%3C%2Fsvg%3E%0A") no-repeat center;
+    border: 1px dashed #aaa
+}
+
+.mce-pagebreak {
+    border: 1px dashed #aaa;
+    cursor: default;
+    display: block;
+    height: 5px;
+    margin-top: 15px;
+    page-break-before: always;
+    width: 100%
+}
+
+@media print {
+    .mce-pagebreak {
+        border: 0
+    }
+}
+
+.tiny-pageembed .mce-shim {
+    background: url(data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7);
+    height: 100%;
+    left: 0;
+    position: absolute;
+    top: 0;
+    width: 100%
+}
+
+.tiny-pageembed[data-mce-selected="2"] .mce-shim {
+    display: none
+}
+
+.tiny-pageembed {
+    display: inline-block;
+    position: relative
+}
+
+.tiny-pageembed--16by9,.tiny-pageembed--1by1,.tiny-pageembed--21by9,.tiny-pageembed--4by3 {
+    display: block;
+    overflow: hidden;
+    padding: 0;
+    position: relative;
+    width: 100%
+}
+
+.tiny-pageembed--21by9 {
+    padding-top: 42.857143%
+}
+
+.tiny-pageembed--16by9 {
+    padding-top: 56.25%
+}
+
+.tiny-pageembed--4by3 {
+    padding-top: 75%
+}
+
+.tiny-pageembed--1by1 {
+    padding-top: 100%
+}
+
+.tiny-pageembed--16by9 iframe,.tiny-pageembed--1by1 iframe,.tiny-pageembed--21by9 iframe,.tiny-pageembed--4by3 iframe {
+    border: 0;
+    height: 100%;
+    left: 0;
+    position: absolute;
+    top: 0;
+    width: 100%
+}
+
+.mce-content-body[data-mce-placeholder] {
+    position: relative
+}
+
+.mce-content-body[data-mce-placeholder]:not(.mce-visualblocks)::before {
+    color: rgba(34,47,62,.7);
+    content: attr(data-mce-placeholder);
+    position: absolute
+}
+
+.mce-content-body:not([dir=rtl])[data-mce-placeholder]:not(.mce-visualblocks)::before {
+    left: 1px
+}
+
+.mce-content-body[dir=rtl][data-mce-placeholder]:not(.mce-visualblocks)::before {
+    right: 1px
+}
+
+.mce-content-body div.mce-resizehandle {
+    background-color: #4099ff;
+    border-color: #4099ff;
+    border-style: solid;
+    border-width: 1px;
+    box-sizing: border-box;
+    height: 10px;
+    position: absolute;
+    width: 10px;
+    z-index: 1298
+}
+
+.mce-content-body div.mce-resizehandle:hover {
+    background-color: #4099ff
+}
+
+.mce-content-body div.mce-resizehandle:nth-of-type(1) {
+    cursor: nwse-resize
+}
+
+.mce-content-body div.mce-resizehandle:nth-of-type(2) {
+    cursor: nesw-resize
+}
+
+.mce-content-body div.mce-resizehandle:nth-of-type(3) {
+    cursor: nwse-resize
+}
+
+.mce-content-body div.mce-resizehandle:nth-of-type(4) {
+    cursor: nesw-resize
+}
+
+.mce-content-body .mce-resize-backdrop {
+    z-index: 10000
+}
+
+.mce-content-body .mce-clonedresizable {
+    cursor: default;
+    opacity: .5;
+    outline: 1px dashed #000;
+    position: absolute;
+    z-index: 10001
+}
+
+.mce-content-body .mce-clonedresizable.mce-resizetable-columns td,.mce-content-body .mce-clonedresizable.mce-resizetable-columns th {
+    border: 0
+}
+
+.mce-content-body .mce-resize-helper {
+    background: #555;
+    background: rgba(0,0,0,.75);
+    border: 1px;
+    border-radius: 3px;
+    color: #fff;
+    display: none;
+    font-family: sans-serif;
+    font-size: 12px;
+    line-height: 14px;
+    margin: 5px 10px;
+    padding: 5px;
+    position: absolute;
+    white-space: nowrap;
+    z-index: 10002
+}
+
+.tox-rtc-user-selection {
+    position: relative
+}
+
+.tox-rtc-user-cursor {
+    bottom: 0;
+    cursor: default;
+    position: absolute;
+    top: 0;
+    width: 2px
+}
+
+.tox-rtc-user-cursor::before {
+    background-color: inherit;
+    border-radius: 50%;
+    content: '';
+    display: block;
+    height: 8px;
+    position: absolute;
+    right: -3px;
+    top: -3px;
+    width: 8px
+}
+
+.tox-rtc-user-cursor:hover::after {
+    background-color: inherit;
+    border-radius: 100px;
+    box-sizing: border-box;
+    color: #fff;
+    content: attr(data-user);
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    left: -5px;
+    min-height: 8px;
+    min-width: 8px;
+    padding: 0 12px;
+    position: absolute;
+    top: -11px;
+    white-space: nowrap;
+    z-index: 1000
+}
+
+.tox-rtc-user-selection--1 .tox-rtc-user-cursor {
+    background-color: #2dc26b
+}
+
+.tox-rtc-user-selection--2 .tox-rtc-user-cursor {
+    background-color: #e03e2d
+}
+
+.tox-rtc-user-selection--3 .tox-rtc-user-cursor {
+    background-color: #f1c40f
+}
+
+.tox-rtc-user-selection--4 .tox-rtc-user-cursor {
+    background-color: #3598db
+}
+
+.tox-rtc-user-selection--5 .tox-rtc-user-cursor {
+    background-color: #b96ad9
+}
+
+.tox-rtc-user-selection--6 .tox-rtc-user-cursor {
+    background-color: #e67e23
+}
+
+.tox-rtc-user-selection--7 .tox-rtc-user-cursor {
+    background-color: #aaa69d
+}
+
+.tox-rtc-user-selection--8 .tox-rtc-user-cursor {
+    background-color: #f368e0
+}
+
+.tox-rtc-remote-image {
+    background: #eaeaea url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2236%22%20height%3D%2212%22%20viewBox%3D%220%200%2036%2012%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%20%20%3Ccircle%20cx%3D%226%22%20cy%3D%226%22%20r%3D%223%22%20fill%3D%22rgba(0%2C%200%2C%200%2C%20.2)%22%3E%0A%20%20%20%20%3Canimate%20attributeName%3D%22r%22%20values%3D%223%3B5%3B3%22%20calcMode%3D%22linear%22%20dur%3D%221s%22%20repeatCount%3D%22indefinite%22%20%2F%3E%0A%20%20%3C%2Fcircle%3E%0A%20%20%3Ccircle%20cx%3D%2218%22%20cy%3D%226%22%20r%3D%223%22%20fill%3D%22rgba(0%2C%200%2C%200%2C%20.2)%22%3E%0A%20%20%20%20%3Canimate%20attributeName%3D%22r%22%20values%3D%223%3B5%3B3%22%20calcMode%3D%22linear%22%20begin%3D%22.33s%22%20dur%3D%221s%22%20repeatCount%3D%22indefinite%22%20%2F%3E%0A%20%20%3C%2Fcircle%3E%0A%20%20%3Ccircle%20cx%3D%2230%22%20cy%3D%226%22%20r%3D%223%22%20fill%3D%22rgba(0%2C%200%2C%200%2C%20.2)%22%3E%0A%20%20%20%20%3Canimate%20attributeName%3D%22r%22%20values%3D%223%3B5%3B3%22%20calcMode%3D%22linear%22%20begin%3D%22.66s%22%20dur%3D%221s%22%20repeatCount%3D%22indefinite%22%20%2F%3E%0A%20%20%3C%2Fcircle%3E%0A%3C%2Fsvg%3E%0A") no-repeat center center;
+    border: 1px solid #ccc;
+    min-height: 240px;
+    min-width: 320px
+}
+
+.mce-match-marker {
+    background: #aaa;
+    color: #fff
+}
+
+.mce-match-marker-selected {
+    background: #39f;
+    color: #fff
+}
+
+.mce-match-marker-selected::-moz-selection {
+    background: #39f;
+    color: #fff
+}
+
+.mce-match-marker-selected::selection {
+    background: #39f;
+    color: #fff
+}
+
+.mce-content-body audio[data-mce-selected],.mce-content-body details[data-mce-selected],.mce-content-body embed[data-mce-selected],.mce-content-body img[data-mce-selected],.mce-content-body object[data-mce-selected],.mce-content-body table[data-mce-selected],.mce-content-body video[data-mce-selected] {
+    outline: 3px solid #b4d7ff
+}
+
+.mce-content-body hr[data-mce-selected] {
+    outline: 3px solid #b4d7ff;
+    outline-offset: 1px
+}
+
+.mce-content-body [contentEditable=false] [contentEditable=true]:focus {
+    outline: 3px solid #b4d7ff
+}
+
+.mce-content-body [contentEditable=false] [contentEditable=true]:hover {
+    outline: 3px solid #b4d7ff
+}
+
+.mce-content-body [contentEditable=false][data-mce-selected] {
+    cursor: not-allowed;
+    outline: 3px solid #b4d7ff
+}
+
+.mce-content-body.mce-content-readonly [contentEditable=true]:focus,.mce-content-body.mce-content-readonly [contentEditable=true]:hover {
+    outline: 0
+}
+
+.mce-content-body [data-mce-selected=inline-boundary] {
+    background-color: #b4d7ff
+}
+
+.mce-content-body .mce-edit-focus {
+    outline: 3px solid #b4d7ff
+}
+
+.mce-content-body td[data-mce-selected],.mce-content-body th[data-mce-selected] {
+    position: relative
+}
+
+.mce-content-body td[data-mce-selected]::-moz-selection,.mce-content-body th[data-mce-selected]::-moz-selection {
+    background: 0 0
+}
+
+.mce-content-body td[data-mce-selected]::selection,.mce-content-body th[data-mce-selected]::selection {
+    background: 0 0
+}
+
+.mce-content-body td[data-mce-selected] *,.mce-content-body th[data-mce-selected] * {
+    outline: 0;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none
+}
+
+.mce-content-body td[data-mce-selected]::after,.mce-content-body th[data-mce-selected]::after {
+    background-color: rgba(180,215,255,.7);
+    border: 1px solid rgba(180,215,255,.7);
+    bottom: -1px;
+    content: '';
+    left: -1px;
+    mix-blend-mode: multiply;
+    position: absolute;
+    right: -1px;
+    top: -1px
+}
+
+@media screen and (-ms-high-contrast:active),(-ms-high-contrast:none) {
+    .mce-content-body td[data-mce-selected]::after,.mce-content-body th[data-mce-selected]::after {
+        border-color: rgba(0,84,180,.7)
+    }
+}
+
+.mce-content-body img[data-mce-selected]::-moz-selection {
+    background: 0 0
+}
+
+.mce-content-body img[data-mce-selected]::selection {
+    background: 0 0
+}
+
+.ephox-snooker-resizer-bar {
+    background-color: #b4d7ff;
+    opacity: 0;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none
+}
+
+.ephox-snooker-resizer-cols {
+    cursor: col-resize
+}
+
+.ephox-snooker-resizer-rows {
+    cursor: row-resize
+}
+
+.ephox-snooker-resizer-bar.ephox-snooker-resizer-bar-dragging {
+    opacity: 1
+}
+
+.mce-spellchecker-word {
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D'4'%20height%3D'4'%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%3E%3Cpath%20stroke%3D'%23ff0000'%20fill%3D'none'%20stroke-linecap%3D'round'%20stroke-opacity%3D'.75'%20d%3D'M0%203L2%201%204%203'%2F%3E%3C%2Fsvg%3E%0A");
+    background-position: 0 calc(100% + 1px);
+    background-repeat: repeat-x;
+    background-size: auto 6px;
+    cursor: default;
+    height: 2rem
+}
+
+.mce-spellchecker-grammar {
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D'4'%20height%3D'4'%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%3E%3Cpath%20stroke%3D'%2300A835'%20fill%3D'none'%20stroke-linecap%3D'round'%20d%3D'M0%203L2%201%204%203'%2F%3E%3C%2Fsvg%3E%0A");
+    background-position: 0 calc(100% + 1px);
+    background-repeat: repeat-x;
+    background-size: auto 6px;
+    cursor: default
+}
+
+.mce-toc {
+    border: 1px solid gray
+}
+
+.mce-toc h2 {
+    margin: 4px
+}
+
+.mce-toc li {
+    list-style-type: none
+}
+
+[data-mce-block] {
+    display: block
+}
+
+.mce-item-table:not([border]),.mce-item-table:not([border]) caption,.mce-item-table:not([border]) td,.mce-item-table:not([border]) th,.mce-item-table[border="0"],.mce-item-table[border="0"] caption,.mce-item-table[border="0"] td,.mce-item-table[border="0"] th,table[style*="border-width: 0px"],table[style*="border-width: 0px"] caption,table[style*="border-width: 0px"] td,table[style*="border-width: 0px"] th {
+    border: 1px dashed #bbb
+}
+
+.mce-visualblocks address,.mce-visualblocks article,.mce-visualblocks aside,.mce-visualblocks blockquote,.mce-visualblocks div:not([data-mce-bogus]),.mce-visualblocks dl,.mce-visualblocks figcaption,.mce-visualblocks figure,.mce-visualblocks h1,.mce-visualblocks h2,.mce-visualblocks h3,.mce-visualblocks h4,.mce-visualblocks h5,.mce-visualblocks h6,.mce-visualblocks hgroup,.mce-visualblocks ol,.mce-visualblocks p,.mce-visualblocks pre,.mce-visualblocks section,.mce-visualblocks ul {
+    background-repeat: no-repeat;
+    border: 1px dashed #bbb;
+    margin-left: 3px;
+    padding-top: 10px
+}
+
+.mce-visualblocks p {
+    background-image: url(data:image/gif;base64,R0lGODlhCQAJAJEAAAAAAP///7u7u////yH5BAEAAAMALAAAAAAJAAkAAAIQnG+CqCN/mlyvsRUpThG6AgA7)
+}
+
+.mce-visualblocks h1 {
+    background-image: url(data:image/gif;base64,R0lGODlhDQAKAIABALu7u////yH5BAEAAAEALAAAAAANAAoAAAIXjI8GybGu1JuxHoAfRNRW3TWXyF2YiRUAOw==)
+}
+
+.mce-visualblocks h2 {
+    background-image: url(data:image/gif;base64,R0lGODlhDgAKAIABALu7u////yH5BAEAAAEALAAAAAAOAAoAAAIajI8Hybbx4oOuqgTynJd6bGlWg3DkJzoaUAAAOw==)
+}
+
+.mce-visualblocks h3 {
+    background-image: url(data:image/gif;base64,R0lGODlhDgAKAIABALu7u////yH5BAEAAAEALAAAAAAOAAoAAAIZjI8Hybbx4oOuqgTynJf2Ln2NOHpQpmhAAQA7)
+}
+
+.mce-visualblocks h4 {
+    background-image: url(data:image/gif;base64,R0lGODlhDgAKAIABALu7u////yH5BAEAAAEALAAAAAAOAAoAAAIajI8HybbxInR0zqeAdhtJlXwV1oCll2HaWgAAOw==)
+}
+
+.mce-visualblocks h5 {
+    background-image: url(data:image/gif;base64,R0lGODlhDgAKAIABALu7u////yH5BAEAAAEALAAAAAAOAAoAAAIajI8HybbxIoiuwjane4iq5GlW05GgIkIZUAAAOw==)
+}
+
+.mce-visualblocks h6 {
+    background-image: url(data:image/gif;base64,R0lGODlhDgAKAIABALu7u////yH5BAEAAAEALAAAAAAOAAoAAAIajI8HybbxIoiuwjan04jep1iZ1XRlAo5bVgAAOw==)
+}
+
+.mce-visualblocks div:not([data-mce-bogus]) {
+    background-image: url(data:image/gif;base64,R0lGODlhEgAKAIABALu7u////yH5BAEAAAEALAAAAAASAAoAAAIfjI9poI0cgDywrhuxfbrzDEbQM2Ei5aRjmoySW4pAAQA7)
+}
+
+.mce-visualblocks section {
+    background-image: url(data:image/gif;base64,R0lGODlhKAAKAIABALu7u////yH5BAEAAAEALAAAAAAoAAoAAAI5jI+pywcNY3sBWHdNrplytD2ellDeSVbp+GmWqaDqDMepc8t17Y4vBsK5hDyJMcI6KkuYU+jpjLoKADs=)
+}
+
+.mce-visualblocks article {
+    background-image: url(data:image/gif;base64,R0lGODlhKgAKAIABALu7u////yH5BAEAAAEALAAAAAAqAAoAAAI6jI+pywkNY3wG0GBvrsd2tXGYSGnfiF7ikpXemTpOiJScasYoDJJrjsG9gkCJ0ag6KhmaIe3pjDYBBQA7)
+}
+
+.mce-visualblocks blockquote {
+    background-image: url(data:image/gif;base64,R0lGODlhPgAKAIABALu7u////yH5BAEAAAEALAAAAAA+AAoAAAJPjI+py+0Knpz0xQDyuUhvfoGgIX5iSKZYgq5uNL5q69asZ8s5rrf0yZmpNkJZzFesBTu8TOlDVAabUyatguVhWduud3EyiUk45xhTTgMBBQA7)
+}
+
+.mce-visualblocks address {
+    background-image: url(data:image/gif;base64,R0lGODlhLQAKAIABALu7u////yH5BAEAAAEALAAAAAAtAAoAAAI/jI+pywwNozSP1gDyyZcjb3UaRpXkWaXmZW4OqKLhBmLs+K263DkJK7OJeifh7FicKD9A1/IpGdKkyFpNmCkAADs=)
+}
+
+.mce-visualblocks pre {
+    background-image: url(data:image/gif;base64,R0lGODlhFQAKAIABALu7uwAAACH5BAEAAAEALAAAAAAVAAoAAAIjjI+ZoN0cgDwSmnpz1NCueYERhnibZVKLNnbOq8IvKpJtVQAAOw==)
+}
+
+.mce-visualblocks figure {
+    background-image: url(data:image/gif;base64,R0lGODlhJAAKAIAAALu7u////yH5BAEAAAEALAAAAAAkAAoAAAI0jI+py+2fwAHUSFvD3RlvG4HIp4nX5JFSpnZUJ6LlrM52OE7uSWosBHScgkSZj7dDKnWAAgA7)
+}
+
+.mce-visualblocks figcaption {
+    border: 1px dashed #bbb
+}
+
+.mce-visualblocks hgroup {
+    background-image: url(data:image/gif;base64,R0lGODlhJwAKAIABALu7uwAAACH5BAEAAAEALAAAAAAnAAoAAAI3jI+pywYNI3uB0gpsRtt5fFnfNZaVSYJil4Wo03Hv6Z62uOCgiXH1kZIIJ8NiIxRrAZNMZAtQAAA7)
+}
+
+.mce-visualblocks aside {
+    background-image: url(data:image/gif;base64,R0lGODlhHgAKAIABAKqqqv///yH5BAEAAAEALAAAAAAeAAoAAAItjI+pG8APjZOTzgtqy7I3f1yehmQcFY4WKZbqByutmW4aHUd6vfcVbgudgpYCADs=)
+}
+
+.mce-visualblocks ul {
+    background-image: url(data:image/gif;base64,R0lGODlhDQAKAIAAALu7u////yH5BAEAAAEALAAAAAANAAoAAAIXjI8GybGuYnqUVSjvw26DzzXiqIDlVwAAOw==)
+}
+
+.mce-visualblocks ol {
+    background-image: url(data:image/gif;base64,R0lGODlhDQAKAIABALu7u////yH5BAEAAAEALAAAAAANAAoAAAIXjI8GybH6HHt0qourxC6CvzXieHyeWQAAOw==)
+}
+
+.mce-visualblocks dl {
+    background-image: url(data:image/gif;base64,R0lGODlhDQAKAIABALu7u////yH5BAEAAAEALAAAAAANAAoAAAIXjI8GybEOnmOvUoWznTqeuEjNSCqeGRUAOw==)
+}
+
+.mce-visualblocks:not([dir=rtl]) address,.mce-visualblocks:not([dir=rtl]) article,.mce-visualblocks:not([dir=rtl]) aside,.mce-visualblocks:not([dir=rtl]) blockquote,.mce-visualblocks:not([dir=rtl]) div:not([data-mce-bogus]),.mce-visualblocks:not([dir=rtl]) dl,.mce-visualblocks:not([dir=rtl]) figcaption,.mce-visualblocks:not([dir=rtl]) figure,.mce-visualblocks:not([dir=rtl]) h1,.mce-visualblocks:not([dir=rtl]) h2,.mce-visualblocks:not([dir=rtl]) h3,.mce-visualblocks:not([dir=rtl]) h4,.mce-visualblocks:not([dir=rtl]) h5,.mce-visualblocks:not([dir=rtl]) h6,.mce-visualblocks:not([dir=rtl]) hgroup,.mce-visualblocks:not([dir=rtl]) ol,.mce-visualblocks:not([dir=rtl]) p,.mce-visualblocks:not([dir=rtl]) pre,.mce-visualblocks:not([dir=rtl]) section,.mce-visualblocks:not([dir=rtl]) ul {
+    margin-left: 3px
+}
+
+.mce-visualblocks[dir=rtl] address,.mce-visualblocks[dir=rtl] article,.mce-visualblocks[dir=rtl] aside,.mce-visualblocks[dir=rtl] blockquote,.mce-visualblocks[dir=rtl] div:not([data-mce-bogus]),.mce-visualblocks[dir=rtl] dl,.mce-visualblocks[dir=rtl] figcaption,.mce-visualblocks[dir=rtl] figure,.mce-visualblocks[dir=rtl] h1,.mce-visualblocks[dir=rtl] h2,.mce-visualblocks[dir=rtl] h3,.mce-visualblocks[dir=rtl] h4,.mce-visualblocks[dir=rtl] h5,.mce-visualblocks[dir=rtl] h6,.mce-visualblocks[dir=rtl] hgroup,.mce-visualblocks[dir=rtl] ol,.mce-visualblocks[dir=rtl] p,.mce-visualblocks[dir=rtl] pre,.mce-visualblocks[dir=rtl] section,.mce-visualblocks[dir=rtl] ul {
+    background-position-x: right;
+    margin-right: 3px
+}
+
+.mce-nbsp,.mce-shy {
+    background: #aaa
+}
+
+.mce-shy::after {
+    content: '-'
+}
+
+body {
+    font-family: sans-serif
+}
+
+table {
+    border-collapse: collapse
+}
+
 </style>

@@ -8,6 +8,7 @@
   import { alertStore } from "../../stores/alert";
   import type { InfoHotspots, LinkHotspots } from "@prisma/client";
   import LinkHotspot from "$lib/web/LinkHotspot.svelte";
+  import RichText from "./form-field/RichText.svelte";
 
   export let showFormModalEdit: boolean = true
   export let valueEditHotspot: {
@@ -119,7 +120,7 @@
 
 </script>
 
-<Modal id="form-modal" bind:open={showFormModalEdit} size="sm" autoclose={false} class="w-full">
+<Modal id="form-modal" bind:open={showFormModalEdit} size="md" autoclose={false} class="w-full">
   <form class="flex flex-col" method="post" on:submit|preventDefault={handleSubmit}>
     <h3 class="mb-4 text-xl font-medium text-gray-900 dark:text-white">Chỉnh sửa điểm nóng</h3>
     <input type="hidden" name="id" value={valueEditHotspot?.value.id}>
@@ -196,7 +197,9 @@
             <Input type="text" id="tile" name="title" placeholder="Tiêu đề" bind:value={title} required />
           </div>
 
-          {#if selectTypes == "2"}
+          {#if selectTypes == "1"}
+            <RichText id="description" name="Nội dung" bind:value={description} />
+          {:else if selectTypes == "2"}
             <div>
               <Label for="video" class="pb-2">Video</Label>
               <Input type="text" id="video" name="video" placeholder="eg. NrkWdRHKfZE" bind:value={video} required />

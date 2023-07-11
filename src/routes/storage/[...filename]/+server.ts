@@ -4,6 +4,7 @@ import * as fs from 'fs/promises';
 import { existsSync, mkdirSync, createReadStream } from "fs";
 
 import prisma from "$lib/server/prismadb";
+import { extname } from 'path';
 
 export const GET = async ({ params, request, cookies }) => {
   const filepath = './storage/' + params.filename
@@ -16,5 +17,12 @@ export const GET = async ({ params, request, cookies }) => {
 
   const file_stream = await fs.readFile(filepath)
 
-  return new Response(file_stream)
+  const file_extension = extname(filepath);
+
+  return new Response(file_stream, {
+    headers: {
+      'Content-Type': `image/${file_extension.substring(1)}`,
+      'Cache-Control': 'public, max-age=86400'
+    }
+  })
 }

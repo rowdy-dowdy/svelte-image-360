@@ -9,7 +9,7 @@
   <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 group">
     <div class="relative w-10 h-10 md:w-14 md:h-14 rounded-full transition-all duration-500 group-hover:w-20 group-hover:h-20 md:group-hover:w-32 md:group-hover:h-32 group shadow-inner">
       <div class="ball bubble !absolute top-0 left-0">
-        <img src="/logo2.png" alt="" class="w-full h-full opacity-100 group-hover:opacity-0 transition-all 
+        <img src="/logo.png" alt="" class="w-full h-full opacity-100 group-hover:opacity-0 transition-all 
           duration-500 rounded-full" loading="lazy">
         <img src={image} alt="" class="absolute top-0 left-0 w-full h-full object-cover rounded-full
           opacity-0 group-hover:opacity-100 transition-all duration-500" loading="lazy">

@@ -18,11 +18,6 @@
 
   let hiddenAddModal = true
 
-  if (data.scenes.length > 0 ) {
-    if (!$page.url.searchParams.get('scene'))
-      goto('?scene='+data.scenes[0].id)
-  }
-
   // sort list scene
   let listScene: HTMLElement
 
@@ -56,6 +51,7 @@
 
   let loadingSaveSort = false
 
+  let sceneId = data.scenes.length > 0 ? data.scenes[0].id : null
 </script>
 
 <div class="w-full h-full flex items-stretch">
@@ -80,8 +76,9 @@
 
     <div class="flex flex-col space-y-2 overflow-y-auto px-4" bind:this={listScene} on:sort={sort}>
       {#each dataFilter as item, i (i)}
-        <a href="?scene={item.id}" class="flex items-center space-x-4 rounded hover:bg-gray-200 px-4 py-2 group
-          {$page.url.searchParams.get('scene') == item.id ? '!bg-gray-200' : ''}"
+        <button class="flex items-center space-x-4 rounded hover:bg-gray-200 px-4 py-2 group
+          {sceneId == item.id ? '!bg-gray-200' : ''}"
+          on:click|preventDefault={() => sceneId = item.id}
         >
           <span class="flex-none icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="m12 17 1-2V9.858c1.721-.447 3-2 3-3.858 0-2.206-1.794-4-4-4S8 3.794 8 6c0 1.858 1.279 3.411 3 3.858V15l1 2zM10 6c0-1.103.897-2 2-2s2 .897 2 2-.897 2-2 2-2-.897-2-2z"></path><path d="m16.267 10.563-.533 1.928C18.325 13.207 20 14.584 20 16c0 1.892-3.285 4-8 4s-8-2.108-8-4c0-1.416 1.675-2.793 4.267-3.51l-.533-1.928C4.197 11.54 2 13.623 2 16c0 3.364 4.393 6 10 6s10-2.636 10-6c0-2.377-2.197-4.46-5.733-5.437z"></path></svg>
@@ -91,7 +88,7 @@
             {dataFilter.length != data.scenes.length ? '!hidden' : ''}">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M18 11h-5V6h3l-4-4-4 4h3v5H6V8l-4 4 4 4v-3h5v5H8l4 4 4-4h-3v-5h5v3l4-4-4-4z"></path></svg>
           </span>
-        </a>
+        </button>
       {:else}
         <p class="text-center">Không có bối cảnh nào</p>
       {/each}
@@ -108,6 +105,7 @@
             if (result.type == "failure") {
               alertStore.addAlert({
                 type: "warning",
+                //@ts-ignore
                 title: result?.data?.error || "Có lỗi xảy ra"
               })
             }
@@ -154,7 +152,7 @@
   </div>
   <div class="flex-grow min-w-0 relative">
     {#if data.scenes.length > 0}
-      <AdminImage360 data={data.scenes} groups={data.groups} />
+      <AdminImage360 data={data.scenes} groups={data.groups} bind:sceneId={sceneId} />
     {:else}
       <p class="w-full h-full grid place-items-center">
         Không có bối cảnh nào, hãy tạo bối cảnh mới
