@@ -784,10 +784,106 @@ div.mce-footnotes li>a.mce-footnotes-backlink {
   content: '-'
 }
 
-body {
-  font-family: sans-serif
+.psv-panel-content {
+  backdrop-filter: blur(20px);
+  /* all: unset; */
+  color: #111;
+  padding: 1rem;
+  overflow-y: auto;
+  background-color: #fff;
+  font-size: 14px;
 }
 
-table {
-  border-collapse: collapse
+.psv-panel-content * {
+  /* all: unset; */
+  word-wrap: break-word;
+}
+
+.psv-panel-resizer {
+  background-color: rgb(255 255 255 / 90%);
+}
+
+.psv-panel-resizer::before {
+  box-shadow: 1px 0 #000, 3px 0px #000, 5px 0px #000, 1px 2px #000, 3px 2px #000, 5px 2px #000, 1px 4px #000, 3px 4px #000, 5px 4px #000, 1px 6px #000, 3px 6px #000, 5px 6px #000, 1px 8px #000, 3px 8px #000, 5px 8px #000, 1px 10px #000, 3px 10px #000, 5px 10px #000, 1px 12px #000, 3px 12px #000, 5px 12px #000, 1px 14px #000, 3px 14px #000, 5px 14px #000, 1px 16px #000, 3px 16px #000, 5px 16px #000, 1px 18px #000, 3px 18px #000, 5px 18px #000, 1px 20px #000, 3px 20px #000, 5px 20px #000, 1px 22px #000, 3px 22px #000, 5px 22px #000, 1px 24px #000, 3px 24px #000, 5px 24px #000, 1px 26px #000, 3px 26px #000, 5px 26px #000, 1px 28px #000, 3px 28px #000, 5px 28px #000;
+}
+
+.psv-panel-close-button {
+  z-index: 10;
+  color: #000;
+}
+.psv-panel-close-button:hover {
+  background: none;
+  color: #000;
+}
+
+.psv-panel-content p > code {
+  background-color: #e8e8e8;
+  border-radius: 3px;
+  padding: .1rem .2rem;
+}
+
+.psv-panel-content p {
+  display: block;
+  margin-block-start: 1em;
+  margin-block-end: 1em;
+  margin-inline-start: 0px;
+  margin-inline-end: 0px;
+}
+
+.psv-panel-content a {
+  color: blue;
+}
+
+.psv-panel-content h1 { 
+  display: block;
+  font-size: 2em;
+  margin-top: 0.67em;
+  margin-bottom: 0.67em;
+  margin-left: 0;
+  margin-right: 0;
+  font-weight: bold;
+}
+.psv-panel-content h2 {
+  display: block;
+  font-size: 1.5em;
+  margin-top: 0.83em;
+  margin-bottom: 0.83em;
+  margin-left: 0;
+  margin-right: 0;
+  font-weight: bold;
+}
+.psv-panel-content h3 { 
+  display: block;
+  font-size: 1.17em;
+  margin-top: 1em;
+  margin-bottom: 1em;
+  margin-left: 0;
+  margin-right: 0;
+  font-weight: bold;
+}
+.psv-panel-content h4 { 
+  display: block;
+  margin-top: 1.33em;
+  margin-bottom: 1.33em;
+  margin-left: 0;
+  margin-right: 0;
+  font-weight: bold;
+}
+.psv-panel-content h5 { 
+  display: block;
+  font-size: .83em;
+  margin-top: 1.67em;
+  margin-bottom: 1.67em;
+  margin-left: 0;
+  margin-right: 0;
+  font-weight: bold;
+}
+.psv-panel-content h6 { 
+  display: block;
+  font-size: .67em;
+  margin-top: 2.33em;
+  margin-bottom: 2.33em;
+  margin-left: 0;
+  margin-right: 0;
+  font-weight: bold;
 }

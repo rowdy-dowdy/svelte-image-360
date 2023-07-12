@@ -62,7 +62,6 @@
 
   const changeDataScene = async (data: SceneDataType[]) => {
     if (currentScene && isMount) {
-      console.log(currentScene.id, sceneId)
       await new Promise(res => {
         markersPlugin?.clearMarkers()
         res(true)
@@ -72,7 +71,7 @@
     }
   }
 
-  const findSceneDataById = (id: string ) => data.find(v => v.id == sceneId)
+  const findSceneDataById = (id: string ) => data.find(v => v.id == id)
 
   function switchScene(scene: SceneDataType) {
     markersPlugin?.clearMarkers()
@@ -179,7 +178,6 @@
         tooltip = undefined,
         html = undefined,
         image = undefined,
-        size = { width: 0, height: 0 },
         content = undefined
 
       if (hotspot?.type == "2") {
@@ -208,7 +206,7 @@
         position: { yaw: hotspot.yaw, pitch: hotspot.pitch },
         html: html,
         image: image,
-        size: size,
+        size: { width: 40, height: 40 },
         anchor: 'center',
         content,
         data: {
@@ -481,18 +479,3 @@
 
 <ModelDeleteScene bind:popupDelete={popupDeleteScene} bind:valueDelete={valueDeleteScene} />
 <ModelEditScene bind:hidden={hiddenPopupEditScene} bind:data={valueEditScene} bind:groups={groups} />
-
-<style lang="postcss">
-  :global(.psv-panel-content) {
-    backdrop-filter: blur(20px);
-    /* all: unset; */
-    color: #fff;
-    padding: 1rem;
-    overflow-y: auto;
-  }
-
-  :global(.psv-panel-content *) {
-    /* all: unset; */
-    word-wrap: break-word;
-  }
-</style>

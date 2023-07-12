@@ -23,11 +23,24 @@ async function main() {
               {
                 name: 'banner',
                 field: 'image',
+                details: `{
+                  width: 6
+                }`
               },
               {
                 name: 'main audio',
                 field: 'audio',
-              }
+                details: `{
+                  width: 6
+                }`
+              },
+              {
+                name: 'so do',
+                field: 'image',
+                details: `{
+                  width: 6
+                }`
+              },
             ]
           }
         }

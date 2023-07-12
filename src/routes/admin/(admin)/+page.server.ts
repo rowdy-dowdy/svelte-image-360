@@ -115,10 +115,30 @@ export const actions = {
         }
       }
     
-      //save image low
-      await imageSharp.resize({ width: 2000 }).jpeg({ quality: 60, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/low.jpg`)
+      // save image low
+      await imageSharp.clone().resize({ width: 2000 }).jpeg({ quality: 60, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/low.jpg`)
         .then((data: any) => {
           return data
+        })
+
+      // create face front image
+      await imageSharp.clone().raw().ensureAlpha().toBuffer()
+        .then(async (img) => {
+          let imageData = new Uint8ClampedArray(img)
+          const dataImage = new ImageData(imageData, w, h)
+
+          const f = await renderFacePromise({
+            data: dataImage, 
+            face: 'nz',
+            rotation: Math.PI,
+            interpolation: "linear"
+          })
+
+          return await sharp(f).resize({width: 1024}).jpeg({ quality: 60, force: true, mozjpeg: true })
+            .toFile(`./storage/tiles/${uuid}/front.jpg`)
+            .then((data: any) => {
+              return data
+            })
         })
 
       // save audio file
@@ -444,146 +464,5 @@ export const actions = {
       console.log({error})
       return fail(400, { error: `Đã có lỗi xảy ra vui lòng thử lại sau` })
     }
-  },
-
-  storageLink: async ({ cookies, request, url }) => {
-    try {
-      // Tạo liên kết cứng hoặc liên kết mềm
-      if (process.platform === 'win32') {
-        // Nếu đang chạy trên Windows, tạo liên kết cứng
-        linkSync('./storage', './static/storage');
-      } else {
-        // Nếu đang chạy trên Unix-like system, tạo liên kết mềm
-        linkSync('./storage', './static/storage');
-      }
-      return {}
-    } catch (error) {
-      
-    }
   }
-}
-
-const slipImageFace = async (
-  file: Buffer, faceName: string, name: string, zoom: number, uuid: string,
-  maxZoom: number
-) => {
-  const image = sharp(file)
-
-  if (["d", "u"].findIndex(v => v == faceName) >= 0) {
-    image.rotate(180)
-  }
-
-  let metadata = await image.metadata()
-  let [width, height] = [Math.floor(metadata.width || 0), Math.floor(metadata.height || 0)]
-
-  if (zoom < maxZoom) {
-    image.resize(Math.floor(width/Math.pow(2,maxZoom - zoom)), Math.floor(height/Math.pow(2,maxZoom - zoom)))
-  }
-
-  let length = Math.pow(2,(zoom - 1)) 
-
-  let distance = Math.floor(width / length)
-
-  if (zoom < maxZoom) {
-    distance = Math.floor((width/Math.pow(2,maxZoom - zoom)) / length)
-  }
-
-  for(let i = 0; i < length; i++) {
-    for(let j = 0; j < length; j++) {
-
-      if (!existsSync(`./storage/tiles/${uuid}/${zoom}/${faceName}/${i}`)) {
-        mkdirSync(`./storage/tiles/${uuid}/${zoom}/${faceName}/${i}`, { recursive: true })
-      }
-      
-      let temp = image.clone()
-
-      await temp.extract({left: j * distance, top: i * distance, width: distance, height: distance })
-        .jpeg({ quality: 80, force: true, mozjpeg: true })
-        .toFile(`./storage/tiles/${uuid}/${zoom}/${faceName}/${i}/${j}.jpg`)
-        .then((data: any) => {
-          return data
-        })
-    }
-  }
-}
-
-const mergeImagePreview = async(
-  b: Buffer, d: Buffer, f: Buffer, l: Buffer, r: Buffer, u: Buffer, 
-  name: string, uuid: string, maxZoom: number
-) => {
-  const imageB = sharp(b)
-  const imageD = sharp(d)
-  const imageF = sharp(f)
-  const imageL = sharp(l)
-  const imageR = sharp(r)
-  const imageU = sharp(u)
-
-  let metadata = await imageB.metadata()
-
-  let width = Math.round(metadata.width || 0)
-
-  let imagePreview = imageB.clone()
-  imagePreview.resize(width, width*6)
-
-  // let imagePreview = sharp({
-  //   create: {
-  //     width: width,
-  //     height: width * 6,
-  //     channels: 4,
-  //     background: { r: 255, g: 255, b: 255, alpha: 1 }
-  //   }
-  // })
-
-  let imagePreviewBuffer = await imagePreview.composite([
-    { input: await imageB.toBuffer(), left: 0, top: 0 },
-    { input: await imageD.rotate(180).toBuffer(), left: 0, top: width },
-    { input: await imageF.toBuffer(), left: 0, top: width * 2 },
-    { input: await imageL.toBuffer(), left: 0, top: width * 3 },
-    { input: await imageR.toBuffer(), left: 0, top: width * 4 },
-    { input: await imageU.rotate(180).toBuffer(), left: 0, top: width * 5 },
-
-  ]).toBuffer()
-
-  let imagePreviewSave = sharp(imagePreviewBuffer).resize(Math.round(width/Math.pow(2, maxZoom)), Math.round(width*6 / Math.pow(2, maxZoom)))
-
-  if (!existsSync(`./storage/tiles/${uuid}`)) {
-    mkdirSync(`./storage/tiles/${uuid}`, { recursive: true })
-  }
-
-  await imagePreviewSave.jpeg({ quality: 80, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/preview.jpg`)
-    .then((data: any) => {
-      return data
-    })
-}
-
-const saveImageMobile = async(
-  b: Buffer, d: Buffer, f: Buffer, l: Buffer, r: Buffer, u: Buffer, 
-  uuid: string
-) => {
-  const imageB = sharp(b)
-  const imageD = sharp(d)
-  const imageF = sharp(f)
-  const imageL = sharp(l)
-  const imageR = sharp(r)
-  const imageU = sharp(u)
-
-  let metadata = await imageB.metadata()
-
-  let width = Math.round(metadata.width || 0)
-
-  if (!existsSync(`./storage/tiles/${uuid}/mobile`)) {
-    mkdirSync(`./storage/tiles/${uuid}/mobile`, { recursive: true })
-  }
-
-  let w = Math.round(width / 2)
-
-  await Promise.all([
-    imageB.resize(w, w).jpeg({ quality: 80, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/mobile/b.jpg`).then((data: any) => { return data }),
-    imageD.rotate(180).resize(w, w).jpeg({ quality: 80, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/mobile/d.jpg`).then((data: any) => { return data }),
-    imageF.resize(w, w).jpeg({ quality: 80, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/mobile/f.jpg`).then((data: any) => { return data }),
-    imageL.resize(w, w).jpeg({ quality: 80, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/mobile/l.jpg`).then((data: any) => { return data }),
-    imageR.resize(w, w).jpeg({ quality: 80, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/mobile/r.jpg`).then((data: any) => { return data }),
-    imageU.rotate(180).resize(w, w).jpeg({ quality: 80, force: true, mozjpeg: true }).toFile(`./storage/tiles/${uuid}/mobile/u.jpg`).then((data: any) => { return data }),
-  ])
-
 }

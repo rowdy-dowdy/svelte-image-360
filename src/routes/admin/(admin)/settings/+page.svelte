@@ -3,13 +3,47 @@
   import { invalidateAll } from "$app/navigation";
   import { Button, Label, Modal, TabItem, Tabs, Input, Select, Fileupload, Helper } from "flowbite-svelte";
   import { alertStore } from "../../../../stores/alert";
+  import type { Setting } from "@prisma/client";
+
   export let data
   let isGroupSettingsOpen = false
+  let isSettings = false
+  let editSettingValue: ((Omit<Setting, 'details'>) & {
+    details: {
+      width: number
+    } | null
+  }) | undefined = undefined
+  let isSettingsOpen = false
+  let deleteSettingId: string | undefined = undefined
+  let isDeleteSetting = false
+
+  let settingName = ''
+  let settingField = 'text'
+  let settingWidth = 6
 
   $: groupSettings = data.groupSettings
   $: groupSettingActive = groupSettings.length > 0 ? groupSettings[0] : null
 
-  let isSettingsOpen = false
+
+  const addEditSetting = (setting?: any) => {
+    editSettingValue = setting
+
+    if (editSettingValue) {
+      settingName = editSettingValue.name
+      settingField = editSettingValue.field
+      settingWidth = editSettingValue.details?.width || 6
+    }
+    else {
+      settingName = ''
+      settingField = 'text'
+      settingWidth = 6
+    }
+    isSettingsOpen = true
+  }
+
+  const deleteSetting = (id: string) => {
+
+  }
 </script>
 
 <div class="w-full h-full p-6 overflow-y-auto flex flex-col space-y-6">
@@ -21,13 +55,16 @@
     </div>
 
     <div class="!ml-auto" />
-    <Button outline on:click={() => isSettingsOpen = true}>
+    <Button outline on:click={() => addEditSetting()}>
       <span class="material-symbols-outlined">add</span>
       <span>&nbsp;New Settings</span>
     </Button>
     <Button on:click={() => isGroupSettingsOpen = true}>
       <span class="material-symbols-outlined">add</span>
       <span>&nbsp;New Group Settings</span>
+    </Button>
+    <Button outline={!isSettings} on:click={() => isSettings = !isSettings}>
+      <span class="material-symbols-outlined">settings</span>
     </Button>
   </section>
 
@@ -60,6 +97,7 @@
               else {
                 alertStore.addAlert({
                   type: "error",
+                  // @ts-ignore
                   title: result?.data?.error || "Có lỗi xảy ra"
                 })
               }
@@ -69,23 +107,37 @@
           <div class="flex flex-wrap -mx-2">
             {#if groupSettingActive}
               {#each groupSettingActive.settings as item}
-                {#if item.field == "text"}
-                  <div class="px-2 mb-4" style="width: {item.details?.width / 12 * 100}%">
-                    <Label for="{item.name}" class="mb-2 capitalize">{item.name}</Label>
+                <div class="px-2 mb-4" style="width: {item.details?.width ? `${item.details?.width / 12 * 100}%` : 'auto'}">
+                  <Label for="{item.name}" class="mb-2 capitalize">{item.name}
+                    {#if isSettings}
+                      <div class="inline-flex items-center space-x-2 ml-2">
+                        <button class="text-blue-500"
+                          on:click|preventDefault={() => addEditSetting(item)}
+                        >
+                          <span class="material-symbols-outlined icon-xl !text-base">
+                            edit
+                          </span>
+                        </button>
+                        <button class="text-red-500"
+                          on:click|preventDefault={() => deleteSetting(item.id)}
+                        >
+                          <span class="material-symbols-outlined icon-xl !text-base">
+                            delete
+                          </span>
+                        </button>
+                      </div>
+                    {/if}
+                  </Label>
+                  {#if item.field == "text"}
                     <Input type="text" id="{item.name}" name="{item.name}" placeholder="{item.name}"  />
-                  </div>
-                {:else if item.field == "image"}
-                  <div class="px-2 mb-4" style="width: {item.details?.width / 12 * 100}%">
+                  {:else if item.field == "image"}
                     {#if item.value}
                       <div class="w-40 h-40 rounded border border-gray-900 overflow-hidden mb-2">
                         <img src="{item.value}" alt="" class="w-full h-full object-cover" loading="lazy">
                       </div>
                     {/if}
-                    <Label for="{item.name}" class="mb-2 capitalize">{item.name}</Label>
                     <Input type="file" id="{item.name}" name="{item.name}" placeholder="{item.name}"  />
-                  </div>
-                {:else if item.field == "audio"}
-                  <div class="px-2 mb-4" style="width: {item.details?.width / 12 * 100}%">
+                  {:else if item.field == "audio"}
                     {#if item.value}
                       <div class="flex mb-4 space-x-4 items-center">
                         <audio controls>
@@ -93,15 +145,14 @@
                         </audio>
                       </div>
                     {/if}
-                    <Label for="{item.name}" class="mb-2 capitalize">{item.name}</Label>
                     <Fileupload id="{item.name}" accept=".mp3,audio/*" name="{item.name}" placeholder="{item.name}" />
                     <Helper class="mt-1">MP3, audio.</Helper>
-                  </div>
-                {/if} 
+                  {/if} 
+                </div>
               {:else}
                 <div class="w-full flex flex-col justify-center items-center px-2 mb-4">
                   <p class="p-4 text-center">There are no  Settings</p>
-                  <Button outline size="sm" on:click={() => isSettingsOpen = true}>
+                  <Button outline size="sm" on:click={() => addEditSetting()}>
                     <span class="material-symbols-outlined">add</span>
                     New Settings
                   </Button>
@@ -110,7 +161,7 @@
             {:else}
               <div class="w-full flex flex-col justify-center items-center px-2 mb-4">
                 <p class="p-4 text-center">There are no  Settings</p>
-                <Button outline size="sm" on:click={() => isSettingsOpen = true}>
+                <Button outline size="sm" on:click={() => addEditSetting()}>
                   <span class="material-symbols-outlined">add</span>
                   New Settings
                 </Button>
@@ -141,6 +192,7 @@
         else {
           alertStore.addAlert({
             type: "error",
+            // @ts-ignore
             title: result?.data?.error || "Có lỗi xảy ra"
           })
         }
@@ -173,6 +225,7 @@
         else {
           alertStore.addAlert({
             type: "error",
+            // @ts-ignore
             title: result?.data?.error || "Có lỗi xảy ra"
           })
         }
@@ -181,20 +234,21 @@
     class="grid gap-6 w-[500px]"
   >
     <input type="hidden" name="groupId" value={groupSettingActive?.id}>
+    <input type="hidden" name="editValue" value={editSettingValue?.id}>
     <div>
       <Label for="name" class="mb-2">Name</Label>
-      <Input type="text" id="name" name="name" placeholder="name" required  />
+      <Input type="text" id="name" name="name" placeholder="name" value={settingName} required  />
     </div>
     <div>
       <Label>Select an option
-        <Select class="mt-2" items={[{value:"text", name: "text"}, 
-          {value:"image", name: "image"}, 
-          {value:"audio", name: "audio"}]} name="field" value="text" />
+      <Select class="mt-2" items={[{value:"text", name: "text"}, 
+        {value:"image", name: "image"}, 
+        {value:"audio", name: "audio"}]} name="field" value={settingField} />
       </Label>
     </div>
     <div>
       <Label for="width" class="mb-2">Width 1 - 12</Label>
-      <Input type="number" id="width" name="width" placeholder="eg. 1 - 12" required  value="6" />
+      <Input type="number" id="width" name="width" value={settingWidth} placeholder="eg. 1 - 12" required />
     </div>
     <div>
       <input type="submit" value="save" class="bg-sky-600 hover:bg-sky-500 rounded text-white px-6 py-2 cursor-pointer">

@@ -2,23 +2,24 @@
   import Image360 from '$lib/web/Image360.svelte';
   import { GradientButton } from 'flowbite-svelte';
   import { scale } from 'svelte/transition';
-  // import type { SceneDataType } from '../admin/(admin)/+page.server';
-  // import { page } from "$app/stores";
-  // import { goto } from '$app/navigation';
   import { allowedPlayAduio } from '../../stores/pano';
+  import { browser } from '$app/environment';
+  import { setting } from "$lib/admin/settings";
 
   export let data
-  let start = true
-
-  // if (data.scenes.length > 0 ) {
-  //   if (!$page.url.searchParams.get('scene'))
-  //     goto('?scene='+data.scenes[0].id)
-  // }
+  let start = false
 
   const startTour = () => {
     $allowedPlayAduio = true
     start = true
   }
+
+  let awaitLoad = true
+  // if (browser) {
+  //   setTimeout(() => {
+  //     awaitLoad = true
+  //   }, 1000);
+  // }
 
 </script>
 
@@ -27,28 +28,25 @@
   <style> @-ms-viewport { width: device-width; } </style>
 </svelte:head>
 
-<!-- {#if data.scenes.length > 0} -->
-  <!-- {#await import('$lib/web/Image360.svelte')}
-    loading...
-  {:then Image360}
-    <Image360.default data={data.scenes} settingMainAudio={data.settings.find(v => v.name == "main audio")} groups={data.groups}/>
-  {/await} -->
-  <Image360 data={data.scenes} settingMainAudio={data.settings.find(v => v.name == "main audio")} groups={data.groups}/>
-<!-- {:else}
+{#if data.scenes.length > 0}
+  <Image360 data={data.scenes} groups={data.groups} {start}/>
+{:else}
   <div class="fixed w-full h-screen top-0 left-0 grid place-items-center">
     Không có bối cảnh nào
   </div>
-{/if} -->
+{/if}
 
 {#if !start}
   <div transition:scale={{start: 2, duration: 700, opacity: 0}} class="fixed w-full h-screen top-0 left-0 z-[100] bg-white">
-    <img src="{data.settings.find(v => v.name == "banner")?.value}" class="w-full h-full object-cover" loading="lazy">
+    <img src="{setting("banner")}" class="w-full h-full object-cover" loading="lazy">
 
     <div class="absolute w-full h-full left-0 top-0 flex flex-col items-center justify-center gap-8">
       <h3 class="text-3xl md:text-5xl lg:text-7xl font-semibold text-white text-center" style="text-shadow: 2px 7px 5px rgba(0,0,0,0.3), 
       0px -4px 10px rgba(255,255,255,0.3);">Một chạm tới <span class="text-sky-500">Bắc Hà</span></h3>
 
-      <GradientButton size="lg" on:click={startTour}>Bắt đầu tham quan</GradientButton>
+      {#if awaitLoad}
+        <GradientButton size="lg" on:click={startTour}>Bắt đầu tham quan</GradientButton>
+      {/if}
     </div>
   </div>
 {/if}

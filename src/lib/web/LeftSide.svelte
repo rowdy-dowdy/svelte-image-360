@@ -10,13 +10,13 @@
   import { onMount } from "svelte";
 
   export let data: SceneDataType[]
-  export let sceneSlug: string | null
+  export let sceneSlug: string | undefined
   export let groups: GroupScene[]
 
   let showSceneDemo = false
   let showSceneDemImage = ''
   const enterSceneTitle = (e: MouseEvent, id: string) => {
-    showSceneDemImage = `/storage/tiles/${id}/demo.jpg`
+    showSceneDemImage = `/storage/tiles/${id}/front.jpg`
     showSceneDemo = true
   }
 
@@ -40,21 +40,11 @@
   })
 </script>
 
-{#if showSceneDemo}
-  <div transition:fade class="absolute top-0 left-0 w-full h-full pointer-events-none">
-    <div class="w-full h-full flex items-center justify-center">
-      <div class="w-3/4 max-w-3xl border-4 border-white">
-        <img src="{showSceneDemImage}" alt="" class="w-full h-full" loading="lazy">
-      </div>
-    </div>
-  </div>
-{/if}
-
-<!-- <div class="absolute top-0 left-0 w-full h-full p-6 pointer-events-none overflow-hidden flex flex-col">
+<div class="absolute top-0 left-0 w-full h-full p-6 pointer-events-none overflow-hidden select-none flex flex-col z-10">
   <div class="md:pl-6 lg:pl-12 mb-12">
-    <div class="w-32 h-32">
+    <a href="/" class="block w-32 h-32 pointer-events-auto">
       <img src="/logo.png" alt="logo Bắc Hà" class="w-full h-full object-contain">
-    </div>
+    </a>
   </div>
   
   {#if $showListScene}
@@ -66,7 +56,7 @@
       <div class="flex flex-col text-white"
         on:mouseleave={(e) => leaveSceneTitle(e)}
       >
-        {#each new Array(10) as item}
+        <!-- {#each new Array(10) as item} -->
         {#each data as item (item.id)}
           <div class="flex py-1 space-x-2 items-center cursor-pointer group transition-all duration-[0.4s] origin-left hover:scale-[1.2] pointer-events-auto"
             on:mouseenter={(e) => enterSceneTitle(e,item.id)}
@@ -76,13 +66,24 @@
             <span class="group-hover:text-teal-300" style="text-shadow: rgb(0, 0, 0) 1px 1px 4px;">{item.name}</span>
           </div>
         {/each}
-        {/each}
+        <!-- {/each} -->
       </div>
     </div>
     {/if}
-</div> -->
+</div>
 
-<div class="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden py-8">
+{#if showSceneDemo}
+  <div transition:fade class="absolute top-0 left-0 w-full h-full bg-gradient-to-r 
+    from-black/60 via-transparent to-black/60 pointer-events-none z-10">
+    <div class="w-full h-full flex items-center justify-center">
+      <div class="w-3/4 max-w-3xl border-4 border-white">
+        <img src="{showSceneDemImage}" alt="" class="w-full h-full aspect-[5/3] object-cover" loading="lazy">
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- <div class="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden py-8">
   <button class="absolute left-0 top-[20%] rounded-r py-1 px-2 text-white bg-black/50 grid place-items-center 
     pointer-events-auto hover:bg-white/40 hover:text-gray-800 transition-colors"
     on:click|preventDefault={() => $showListScene = true}
@@ -133,7 +134,7 @@
       </div>
     </div>
   </div>
-</div>
+</div> -->
 
 <style>
  :global(.simplebar-scrollbar::before) {

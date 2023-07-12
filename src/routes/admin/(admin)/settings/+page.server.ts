@@ -15,7 +15,11 @@ export const load = async () => {
   })
 
   let groupSettingsData: (GroupSetting & {
-    settings: Setting[]
+    settings: ((Omit<Setting, 'details'>) & {
+      details: {
+        width: number
+      } | null
+    })[]
   })[] = groupSettings.map(v => {
     return {
       ...v,
@@ -52,20 +56,38 @@ export const actions = {
     try {
       const data = await request.formData()
       const name = data.get('name') as string,
-            field = data.get('field') as string,
-            width = data.get('width') as string,
-            groupId = data.get('groupId') as string
+        field = data.get('field') as string,
+        editValue = data.get('editValue') as string,
+        width = data.get('width') as string,
+        groupId = data.get('groupId') as string
 
-      const setting = await db.setting.create({
-        data: {
-          groupId: groupId,
-          name: name,
-          field,
-          details: JSON.stringify({
-            width: width
-          })
-        }
-      })
+      if (editValue) {
+        await db.setting.update({
+          where: {
+            id: editValue
+          },
+          data: {
+            groupId: groupId,
+            name: name,
+            field,
+            details: JSON.stringify({
+              width: width
+            })
+          }
+        })
+      }
+      else {
+        await db.setting.create({
+          data: {
+            groupId: groupId,
+            name: name,
+            field,
+            details: JSON.stringify({
+              width: width
+            })
+          }
+        })
+      }
 
       return {}
 

@@ -15,7 +15,6 @@
   import LeftSide from "./LeftSide.svelte";
   import LinkHotspot2 from "./LinkHotspot2.svelte";
   import LinkHotspot3 from "./LinkHotspot3.svelte";
-  import { isSafari } from "./map.js";
   import LinkHotspot4 from "./LinkHotspot4.svelte";
   import VideoShow from "./VideoShow.svelte";
   import { Viewer, utils } from "@photo-sphere-viewer/core";
@@ -23,237 +22,260 @@
   import { MarkersPlugin } from "@photo-sphere-viewer/markers-plugin";
   import "@photo-sphere-viewer/core/index.css"
   import "@photo-sphere-viewer/markers-plugin/index.css"
+  import "$lib/admin/tinymce.css"
   import { AutorotatePlugin } from "@photo-sphere-viewer/autorotate-plugin";
 
+  export let start: boolean
   export let data: SceneDataType[]
   export let groups: GroupScene[]
 
   let isMount: boolean = false
+  let isStart: boolean = false
 
   let viewerHTML: HTMLElement | null = null
   let viewer: Viewer | null = null
-  export let settingMainAudio: Setting | undefined
 
-  // type SceneType = {
-  //   data: SceneDataType
-  //   scene: Marzipano.Scene
-  //   view: Marzipano.RectilinearView
-  // }
-
-  // let scenes: SceneType[] = []
-  let currentScene = data[0] 
+  let sceneSlug: string | undefined = undefined
+  let currentScene: SceneDataType = sceneSlug ? (data.find(v => v.slug == sceneSlug) || data[0]) : data[0]
   let autoRotateCheck = true
-
-  // let autoRotate: Function | null = Marzipano.autorotate({
-  //   yawSpeed: 0.03,
-  //   targetPitch: currentScene.initialViewParameters.pitch,
-  //   targetFov: Math.PI/2
-  // })
-
-  // $: changeAutoRotate(currentScene)
-
-  // const changeAutoRotate = (currentScene: SceneDataType) => {
-  //   autoRotate = Marzipano.autorotate({
-  //     yawSpeed: 0.03,
-  //     targetPitch: currentScene.initialViewParameters.pitch,
-  //     targetFov: Math.PI/2
-  //   })
-  // }
-
-  // $: changeVideoShow($videoShow)
-
-  // let autoRotateAfterVideoShow = autoRotateCheck
-  // const changeVideoShow = (videoShow: string | null) => {
-  //   if (videoShow != null) {
-  //     autoRotateAfterVideoShow = autoRotateCheck
-  //     stopAutorotate()
-  //   }
-  //   else {
-  //     if (autoRotateAfterVideoShow) { 
-  //       startAutorotate()
-  //     }
-  //   }
-  // }
+  let fullScreen = false
+  let markersPlugin: MarkersPlugin | null
+  let autoRotate: AutorotatePlugin | null
 
   // web
   $: sceneSlug = $page.params.slug
-  // $: changeScene(sceneSlug)
+  $: currentScene = sceneSlug ? (data.find(v => v.slug == sceneSlug) || data[0]) : data[0]
+  $: changeScene(sceneSlug)
 
-  // const changeScene = (sceneSlug: string | null) => {
-  //   if (!isMount) return
-  //   let scene = scenes.find(v => v?.data.slug == sceneSlug)
-  //   if (scene) {
-  //     switchScene(scene)
-  //   }
-  //   else {
-  //     scenes.length > 0 ? goto(`/${scenes[0].data.slug}`) : goto('/')
-  //   }
-  // }
+  const changeScene = (sceneSlug: string | undefined) => {
+    if (!isMount) return
+    let scene = sceneSlug ? (data.find(v => v.slug == sceneSlug) || data[0]) : data[0]
+    if (scene) {
+      autoRotate?.setOptions({
+        autorotatePitch: scene.initialViewParameters.pitch
+      })
+      switchScene(scene)
+    }
+  }
 
-  // function startAutorotate() {
-  //   if (!viewer || !autoRotate) return
+  function switchScene(scene: SceneDataType) {
+    markersPlugin?.clearMarkers()
+    viewer?.setPanorama({
+      width: scene.faceSize,
+      cols: 16,
+      rows: 8,
+      baseUrl: `/storage/tiles/${scene.id}/low.jpg`,
+      tileUrl: (col: number, row: number) => {
+        return `/storage/tiles/${scene.id}/${row}_${col}.jpg`
+      },
+    }, {
+      pitch: scene.initialViewParameters.pitch,
+      yaw: scene.initialViewParameters.yaw,
+      zoom: scene.initialViewParameters.zoom,
+      showLoader: false,
+      transition: 100,
 
-  //   viewer.startMovement(autoRotate)
-  //   viewer.setIdleMovement(3000, autoRotate)
-  //   autoRotateCheck = true
-  // }
+      // overlay: false
+    }).then(v => {
+      createLinkHotspotElements(scene.linkHotspots)
+      createInfoHotspotElements(scene.infoHotspots)
+    })
+  }
 
-  // function stopAutorotate() {
-  //   if (!viewer) return
-  //   viewer.stopMovement()
-  //   viewer.setIdleMovement(Infinity)
-  //   autoRotateCheck = false
-  // }
+  function toggleAutorotate(value?: boolean) {
+    if (value) {
+      value ? autoRotate?.start() : autoRotate?.stop()
+      autoRotateCheck = value
+      autoRotate?.setOptions({
+        autostartOnIdle: value,
+      });
+      return
+    }
 
-  // function createLinkHotspotElement(hotspot: LinkHotspots) {
-  //   var wrapper = document.createElement('div')
-    
-	// 	if (hotspot?.type == "2") {
-  //     let toolbarComponent = new LinkHotspot2({
-  //       target: wrapper,
-  //       props: {
-  //         title: findSceneDataById(hotspot.target)?.name || ""
-  //       }
-  //     })
-  //   }
-  //   else if (hotspot?.type == "3") {
-  //     let toolbarComponent = new LinkHotspot3({
-	// 		target: wrapper,
-  //       props: {
-  //         title: findSceneDataById(hotspot.target)?.name || ""
-  //       }
-  //     })
-  //   }
-  //   else if (hotspot?.type == "4") {
-  //     let toolbarComponent = new LinkHotspot4({
-	// 		target: wrapper,
-  //       props: {
-  //         title: findSceneDataById(hotspot.target)?.name || ""
-  //       }
-  //     })
-  //   }
-  //   else {
-  //     let toolbarComponent = new LinkHotspot({
-	// 		target: wrapper,
-  //       props: {
-  //         title: findSceneDataById(hotspot.target)?.name || "",
-  //         image: `/storage/tiles/${hotspot.target}/demo.jpg`
-  //       }
-  //     })
-  //   }
+    if (autoRotateCheck) {
+      autoRotate?.stop()
+      autoRotate?.setOptions({
+        autostartOnIdle: false,
+      });
+      autoRotateCheck = false
+    } 
+    else {
+      autoRotate?.setOptions({
+        autostartOnIdle: true,
+      });
+      autoRotate?.start()
+      autoRotateCheck = true
+    }
+  }
 
-	// 	// toolbarComponent.$on('click-eye', ({ detail }) => eye = detail);
-	// 	// toolbarComponent.$on('click-lines', ({ detail }) => lines = detail);
-	// 	// toolbarComponent.$on('click-reset', () => {
-	// 	// 	map.setView(initialView, 5, { animate: true })
-	// 	// })
+  const findSceneDataById = (id: string ) => data.find(v => v.id == id)
+ 
+  function createLinkHotspotElements(hotspots: LinkHotspots[]) { 
+    hotspots.forEach(hotspot => {
+      let wrapper = document.createElement('div'),
+        tooltip = undefined,
+        html = undefined,
+        image = undefined,
+        size = { width: 0, height: 0 }
 
-  //   // Add click event handler.
-  //   wrapper.addEventListener('click', function() {
-  //     let scene = scenes.find(v => v.data.id == hotspot.target)
-  //     goto(`/${scene?.data.slug}`)
-  //   });
-    
-  //   stopTouchAndScrollEventPropagation(wrapper);
+      let target = findSceneDataById(hotspot.target)
 
-  //   return wrapper;
-  // }
+      if (hotspot?.type == "2") {
+        tooltip = target?.name || ""
+        image = '/images/flycam.png'
+        size = { width: 96, height: 96 }
+      }
+      else if (hotspot?.type == "3") {
+        tooltip = target?.name || ""
+        image = '/images/arrow.png'
+        size = { width: 96, height: 96 }
+      }
+      else if (hotspot?.type == "4") {
+        new LinkHotspot4({
+          target: wrapper,
+          props: {
+            title: target?.name || ""
+          }
+        })
+        html = wrapper.innerHTML
+      }
+      else {
+        new LinkHotspot({
+          target: wrapper,
+          props: {
+            title: target?.name || "",
+            image: `/storage/tiles/${hotspot.target}/low.jpg`
+          }
+        })
+        html = wrapper.innerHTML
+      }
 
-  // function createInfoHotspotElement(hotspot: InfoHotspots) {
-  //   var wrapper = document.createElement('div')
+      markersPlugin?.addMarker({
+        id: hotspot.id,
+        position: { yaw: hotspot.yaw, pitch: hotspot.pitch },
+        html: html,
+        image: image,
+        size: size,
+        anchor: 'center',
+        data: {
+          type: 'link',
+          target: target?.slug
+        },
+        tooltip: tooltip
+      });
+    })
+  }
 
-  //   if (hotspot.type == "2") {
-  //     let toolbarComponent = new InfoHotSpot2({
-  //       target: wrapper,
-  //       props: {
-  //         title: hotspot?.title || "",
-  //         video: hotspot?.video || "",
-  //       }
-  //     })
-  //   }
-  //   else {
-  //     let toolbarComponent = new InfoHotSpot({
-  //       target: wrapper,
-  //       props: {
-  //         title: hotspot?.title || "",
-  //         description: hotspot?.description || ""
-  //       }
-  //     })
-  //   }
+  function createInfoHotspotElements(hotspots: InfoHotspots[]) {
+    hotspots.forEach(hotspot => {
+      let wrapper = document.createElement('div'),
+        tooltip = undefined,
+        html = undefined,
+        image = undefined,
+        content = undefined
 
-  //   stopTouchAndScrollEventPropagation(wrapper)
+      if (hotspot?.type == "2") {
+        new InfoHotSpot2({
+          target: wrapper,
+          props: {
+            // title: findSceneDataById(hotspot.target)?.name || ""
+          }
+        })
+        tooltip = hotspot.title ?? ''
+        html = wrapper.innerHTML
+      }
+      else {
+        new InfoHotSpot({
+          target: wrapper,
+          props: {
+          }
+        })
+        tooltip = hotspot.title ?? ''
+        content = hotspot.description ?? ''
+        html = wrapper.innerHTML
+      }
 
-  //   return wrapper
-  // }
+      markersPlugin?.addMarker({
+        id: hotspot.id,
+        position: { yaw: hotspot.yaw, pitch: hotspot.pitch },
+        html: html,
+        image: image,
+        size: { width: 40, height: 40 },
+        anchor: 'center',
+        content,
+        data: {
+          type: 'info',
+          title: tooltip,
+          video: hotspot.video
+        },
+        tooltip: tooltip
+      });
+    })
+  }
 
-  // function stopTouchAndScrollEventPropagation(element: HTMLElement) {
-  //   var eventList = [
-  //     'touchstart', 'touchmove', 'touchend', 'touchcancel',
-  //     'pointerdown', 'pointermove', 'pointerup', 'pointercancel',
-  //     'wheel', 'click', 'mousedown'
-  //   ];
-  //   for (var i = 0; i < eventList.length; i++) {
-  //     element.addEventListener(eventList[i], function(event: Event) {
-  //       event.stopPropagation();
-  //       event.stopImmediatePropagation()
-  //     });
-  //   }
-  // }
+  // stop auto rotate in video show
+  $: changeVideoShow($videoShow)
 
-  // function findSceneById(id: string) {
-  //   for (var i = 0; i < scenes.length; i++) {
-  //     if (scenes[i]?.data.id === id) {
-  //       return scenes[i];
-  //     }
-  //   }
-  //   return null;
-  // }
+  let autoRotateAfterVideoShow = true
+  const changeVideoShow = (videoShow: string | null) => {
+    if (videoShow != null) {
+      autoRotateAfterVideoShow = autoRotateCheck
+      toggleAutorotate(false)
+    }
+    else {
+      if (autoRotateAfterVideoShow) { 
+        toggleAutorotate(true)
+      }
+    }
+  }
 
-  // function findSceneDataById(id: string) {
-  //   for (var i = 0; i < data.length; i++) {
-  //     if (data[i].id === id) {
-  //       return data[i];
-  //     }
-  //   }
-  //   return null;
-  // }
+  // start in tro
+  $: startIntro(start)
 
-  // function switchScene(scene: SceneType) {
-  //   let temp = autoRotateCheck
+  const startIntro = (start: boolean) => {
+    if (start && !isStart) {
+      intro()
+    }
+  }
 
-  //   stopAutorotate()
-  //   scene.view.setParameters(scene.data.initialViewParameters)
-  //   scene.scene.switchTo()
-
-  //   if (temp) {
-  //     startAutorotate()
-  //   }
-  //   currentScene = scene.data
-  // }
-
-  // function toggleAutorotate() {
-  //   if (autoRotateCheck) {
-  //     stopAutorotate()
-  //     autoRotateCheck = false
-  //   } else {
-  //     startAutorotate()
-  //     autoRotateCheck = true
-  //   }
-  // }
-
-  const animatedValues = {
-    pitch: { start: -Math.PI / 2, end: 0.2 },
-    yaw: { start: Math.PI, end: 0 },
-    zoom: { start: 0, end: 50 },
+  let animatedValues = {
+    pitch: { start: -Math.PI / 2, end: currentScene.initialViewParameters.pitch || 0.2 },
+    yaw: { start: -1, end: currentScene.initialViewParameters.yaw || 0 },
+    zoom: { start: 0, end: currentScene.initialViewParameters.zoom || 50 },
     fisheye: { start: 2, end: 0 },
-  };
+  }
 
-  const baseUrl = 'https://photo-sphere-viewer-data.netlify.app/assets/';
+  function intro() {
+    autoRotate?.stop();
+    // markersPlugin?.hideAllMarkers()
+
+    new utils.Animation({
+      properties: animatedValues,
+      duration: 2500,
+      easing: "inOutQuad",
+      onTick: (properties) => {
+        viewer?.setOption("fisheye", properties.fisheye);
+        viewer?.rotate({ yaw: properties.yaw, pitch: properties.pitch });
+        viewer?.zoom(properties.zoom);
+      },
+    }).then(() => {
+      createLinkHotspotElements(currentScene.linkHotspots || [])
+      createInfoHotspotElements(currentScene.infoHotspots || [])
+
+      autoRotate?.setOptions({
+        autorotatePitch: currentScene?.initialViewParameters.pitch,
+        autostartDelay: 1000,
+        autostartOnIdle: true,
+      });
+      autoRotate?.start();
+
+      // markersPlugin?.showAllMarkers()
+    });
+  }
 
   onMount(() => {
-    isMount = true
-
     if (!viewerHTML) return
+
     /// Create viewer.
     viewer = new Viewer({
       container: viewerHTML,
@@ -262,7 +284,7 @@
       plugins: [
         [AutorotatePlugin, {
           autostartDelay: null,
-          autostartOnIdle: true,
+          autostartOnIdle: false,
           autorotatePitch: animatedValues.pitch.end,
           autorotateSpeed: '0.5rpm',
         }],
@@ -274,82 +296,43 @@
       defaultZoomLvl: animatedValues.zoom.start,
       fisheye: animatedValues.fisheye.start,
 
-      touchmoveTwoFingers: true,
+      // touchmoveTwoFingers: true,
       panorama: {
-        width: data[0].faceSize,
+        width: currentScene.faceSize,
         cols: 16,
         rows: 8,
-        baseUrl: `/storage/tiles/${data[0].id}/low.jpg`,
+        baseUrl: `/storage/tiles/${currentScene.id}/low.jpg`,
         tileUrl: (col: number, row: number) => {
-          return `/storage/tiles/${data[0].id}/${row}_${col}.jpg`
+          return `/storage/tiles/${currentScene.id}/${row}_${col}.jpg`
         },
       },
     })
 
-    const markersPlugin: MarkersPlugin = viewer.getPlugin(MarkersPlugin);
+    markersPlugin = viewer.getPlugin(MarkersPlugin) as MarkersPlugin;
+    autoRotate = viewer.getPlugin(AutorotatePlugin) as AutorotatePlugin;
 
-    viewer.addEventListener('dblclick', ({ data }) => {
-      var wrapper = document.createElement('div')
-    
-      new LinkHotspot2({
-        target: wrapper,
-        props: {
-          title: "Đồng Bằng sông Cửu Long"
-        }
-      })
-
-      markersPlugin.addMarker({
-        id: '#' + Math.random(),
-        position: { yaw: data.yaw, pitch: data.pitch },
-        html: wrapper.innerHTML,
-        size: { width: 0, height: 0 },
-        anchor: 'bottom center',
-        // tooltip: 'Generated pin',
-      });
-    });
-
-    let autorotate = viewer.getPlugin(AutorotatePlugin) as any;
-
-    viewer.addEventListener("ready", intro, { once: true });
-
-    function intro() {
-      autorotate?.stop();
-      markersPlugin?.hideAllMarkers()
-
-      new utils.Animation({
-        properties: animatedValues,
-        duration: 2500,
-        easing: "inOutQuad",
-        onTick: (properties) => {
-          viewer?.setOption("fisheye", properties.fisheye);
-          viewer?.rotate({ yaw: properties.yaw, pitch: properties.pitch });
-          viewer?.zoom(properties.zoom);
-        },
-      }).then(() => {
-        autorotate?.setOptions({
-          autostartDelay: 0,
-          autostartOnIdle: true,
-        });
-        autorotate?.start();
-        markersPlugin?.showAllMarkers()
-      });
+    if (start && !isStart) {
+      viewer.addEventListener("ready", intro, { once: true });
+      isStart = true
     }
 
-    // if (!sceneSlug) {
-    //   goto(`/${scenes[0].data.slug}`)
-    // }
-    // else {
-    //   changeScene(sceneSlug)
-    // }
+    markersPlugin.addEventListener('select-marker', ({ marker }) => {
+      if (marker.data?.type == "link" && marker.data?.target) {
+        if (marker.data?.target)
+          goto(`/${marker.data?.target}`)
+        else 
+          goto(`/`)
+      }
+      
+      if (marker.data?.type == "info") {
+        if (marker.data?.video) {
+          $videoShow = marker.data?.video
+        }
+      }
+    })
+
+    isMount = true
   })
-
-  const panoEventMouseDown = (e: Event) => {
-    $hold = true
-  }
-
-  const panoEventMouseUp = (e: Event) => {
-    $hold = false
-  }
 
   onDestroy(() => {
     if (viewer)
@@ -357,21 +340,14 @@
   })
 </script>
 
-<svelte:head>
-  <!-- <meta name="viewport" content="target-densitydpi=device-dpi, width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, minimal-ui">
-  <style> @-ms-viewport { width: device-width; } </style> -->
-</svelte:head>
+<div id="viewer" bind:this={viewerHTML}  class="w-full h-screen" />
 
-<div id="viewer" bind:this={viewerHTML}  class="w-full h-screen"
-  on:mousedown={panoEventMouseDown}
-  on:mouseup={panoEventMouseUp}
-/>
+<LeftSide data={data} sceneSlug={sceneSlug} groups={groups} />
 
-<!-- <LeftSide data={data} sceneSlug={sceneSlug} groups={groups} />
+<BarOptions bind:viewer={viewer} autoRotateCheck={autoRotateCheck} on:toggleAutorotate={() => toggleAutorotate()} currentScene={currentScene} />
 
-<BarOptions {settingMainAudio} autoRotateCheck={autoRotateCheck} on:toggleAutorotate={toggleAutorotate} currentScene={currentScene} />
+<VideoShow />
 
-<VideoShow /> -->
 
 <style lang="postcss">
   :global(.psv-loader-container) {
@@ -383,6 +359,10 @@
 
   :global(.psv-panel-content) {
     @apply backdrop-blur-md;
-    all: unset;
+  }
+
+  :global(.psv-panel.psv--capture-event.psv-panel--open) {
+    width: 600px;
+    max-width: 100%;
   }
 </style>

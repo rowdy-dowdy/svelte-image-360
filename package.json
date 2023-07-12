@@ -58,6 +58,7 @@
 		"os": "^0.1.2",
 		"panorama-to-cubemap": "^1.0.2",
 		"path": "^0.12.7",
+		"photoswipe": "^5.3.8",
 		"postcss": "^8.4.21",
 		"resize-observer-polyfill": "^1.5.1",
 		"sharp": "^0.32.1",
