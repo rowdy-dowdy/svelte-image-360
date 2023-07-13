@@ -19,8 +19,10 @@
   }
   
   let name = ''
+  let sort = 0
 
   $: name = editValue?.name || ""
+  $: sort = editValue?.sort || 0
 
   let loading = false
 
@@ -109,9 +111,14 @@
     
     <div class="flex-grow min-h-0 py-6 border-y mb-6">
       <input type="hidden" name="editId" value="{editValue?.id || ''}">
-      <div class="">
+      <div class="mb-6">
         <Label for="name" class="mb-2">Tên danh mục</Label>
         <Input type="text" id="name" name="name" placeholder="Vd: Khu đua ngựa" required bind:value={name} />
+      </div>
+
+      <div class="mb-6">
+        <Label for="sort" class="mb-2">Sắp xếp</Label>
+        <Input type="number" id="sort" name="sort" placeholder="Thứ tự danh mục" required bind:value={sort} />
       </div>
     </div>
     

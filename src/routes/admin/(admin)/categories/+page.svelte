@@ -24,6 +24,7 @@
   }[] = [
     { id: "id", name: "id", show: true, width: '1px'},
     { id: "name", name: "name", show: true, width: 'auto'},
+    { id: "sort", name: "sort", show: true, width: 'auto'},
     { id: "createdAt", name: "createdAt", show: true, width: '1px'},
     { id: "updatedAt", name: "updatedAt", show: true, width: '1px'}
   ]
@@ -92,7 +93,7 @@
         </TableHeadCell>
       </TableHead>
       <TableBody tableBodyClass="divide-y">
-        {#each data.groups as item (item.id)}
+        {#each dataFilter as item (item.id)}
           <TableBodyRow on:click={(e) => openAddEditRecord(e, item)} class="cursor-pointer">
             <TableBodyCell class="w-0 pr-0">
               <Checkbox />
@@ -102,6 +103,8 @@
                 {#if column.name == "id"}
                   <div class="whitespace-normal min-w-[300px]">{item[column.name]}</div>
                 {:else if column.name == "name"}
+                  <div>{item[column.name]}</div>
+                {:else if column.name == "sort"}
                   <div>{item[column.name]}</div>
                 {:else if column.name == "createdAt" || column.name == "updatedAt"}
                   {@const date = moment(item[column.name])}

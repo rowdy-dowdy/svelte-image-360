@@ -11,7 +11,10 @@ export const load = async ({request}) => {
         linkHotspots: true
       },
       orderBy: {
-        sort: 'asc'
+        // group: {
+        //   sort: 'asc'
+        // },
+        sort: 'asc',
       }
     }),
     db.groupScene.findMany()

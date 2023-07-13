@@ -9,7 +9,8 @@ export const actions = {
   addEdit: async ({ cookies, request, url }) => {
     const data = await request.formData()
     const name = data.get('name') as string,
-      editId = data.get('editId') as string | undefined
+      editId = data.get('editId') as string | undefined,
+      sort = data.get('sort') as string
 
     if (editId && editId != "") {
       console.log({editId})
@@ -18,14 +19,16 @@ export const actions = {
           id: editId
         },
         data: {
-          name: name
+          name: name,
+          sort: +sort
         }
       })
     }
     else {
       await db.groupScene.create({
         data: {
-          name: name
+          name: name,
+          sort: +sort
         }
       })
     }

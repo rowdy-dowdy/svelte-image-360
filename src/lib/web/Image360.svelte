@@ -24,6 +24,7 @@
   import "@photo-sphere-viewer/markers-plugin/index.css"
   import "$lib/admin/tinymce.css"
   import { AutorotatePlugin } from "@photo-sphere-viewer/autorotate-plugin";
+  import Map from "./Map.svelte";
 
   export let start: boolean
   export let data: SceneDataType[]
@@ -83,7 +84,7 @@
   }
 
   function toggleAutorotate(value?: boolean) {
-    if (value) {
+    if (value != undefined) {
       value ? autoRotate?.start() : autoRotate?.stop()
       autoRotateCheck = value
       autoRotate?.setOptions({
@@ -340,14 +341,17 @@
   })
 </script>
 
-<div id="viewer" bind:this={viewerHTML}  class="w-full h-screen" />
+<!-- <div id="viewer" bind:this={viewerHTML}  class="w-full h-screen" /> -->
 
-<LeftSide data={data} sceneSlug={sceneSlug} groups={groups} />
+<LeftSide data={data} sceneSlug={sceneSlug} {currentScene} groups={groups} />
 
-<BarOptions bind:viewer={viewer} autoRotateCheck={autoRotateCheck} on:toggleAutorotate={() => toggleAutorotate()} currentScene={currentScene} />
+<BarOptions bind:viewer={viewer} autoRotateCheck={autoRotateCheck} 
+  on:toggleAutorotate={() => toggleAutorotate()} currentScene={currentScene} scenes={data}
+  {groups} />
 
 <VideoShow />
 
+<Map />
 
 <style lang="postcss">
   :global(.psv-loader-container) {
